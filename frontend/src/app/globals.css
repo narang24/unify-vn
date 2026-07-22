@@ -1,14 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #eee8df;
-  --foreground: #2c355b;
-  --muted: #c4bcb0;
-  --panel: #f7f2ec;
-  --panel-strong: #c9c0b4;
-  --accent: #2c365a;
-  --accent-soft: #42507d;
-  --border-subtle: rgba(44, 53, 91, 0.16);
+  /* ---- Coastal palette ---- */
+  --dark-teal: #008080;
+  --mint: #e0f7f4;
+  --lagoon: #3a93b1;
+  --glacier: #a7bbd1;
+  --breeze: #82adcb;
+  --abyssal: #016a83;
+
+  --background: #f2faf9;
+  --foreground: #062b30;
+  --muted: #5b7681;
+  --panel: #ffffff;
+  --panel-strong: var(--mint);
+  --accent: var(--dark-teal);
+  --accent-foreground: #ffffff;
+  --accent-soft: var(--lagoon);
+  --secondary: var(--breeze);
+  --border-subtle: rgba(1, 106, 131, 0.14);
+  --ring: var(--dark-teal);
+
+  --success: #1f9d6f;
+  --warning: #c98a1c;
+  --danger: #d1495b;
+
+  --radius: 14px;
+}
+
+.dark {
+  --background: #04191c;
+  --foreground: var(--mint);
+  --muted: #9fb8bd;
+  --panel: #0b2b30;
+  --panel-strong: #0f3237;
+  --accent: #37b6b6;
+  --accent-foreground: #04191c;
+  --accent-soft: var(--lagoon);
+  --secondary: var(--breeze);
+  --border-subtle: rgba(224, 247, 244, 0.12);
+  --ring: #37b6b6;
 }
 
 @theme inline {
@@ -18,8 +49,13 @@
   --color-panel: var(--panel);
   --color-panel-strong: var(--panel-strong);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
+  --color-secondary: var(--secondary);
   --color-border-subtle: var(--border-subtle);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-display: var(--font-display);
 }
@@ -28,11 +64,19 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 a {
@@ -41,5 +85,31 @@ a {
 }
 
 ::selection {
-  background: rgba(44, 53, 91, 0.16);
+  background: rgba(0, 128, 128, 0.22);
+}
+
+/* Compact scrollbars used across board/backlog columns */
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Hide scrollbar while keeping scroll functionality (used in tab strips) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

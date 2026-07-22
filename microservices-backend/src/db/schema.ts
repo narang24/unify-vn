@@ -1,7 +1,5 @@
 import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
 
-// ─── Users ────────────────────────────────────────────────────────────────────
-
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   fullName: text("full_name"),
@@ -17,8 +15,6 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── Refresh Tokens ───────────────────────────────────────────────────────────
-
 export const refreshTokens = pgTable("refresh_tokens", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
@@ -29,8 +25,6 @@ export const refreshTokens = pgTable("refresh_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ─── Workspaces ───────────────────────────────────────────────────────────────
-
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -39,10 +33,8 @@ export const workspaces = pgTable("workspaces", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── Spaces ───────────────────────────────────────────────────────────────────
 // A space is a single board container. `kind` decides which views are
-// available on the frontend: "kanban" → Board only, "scrum" → Board + Backlog.
-
+// available on the frontend: "kanban" -> Board only, "scrum" -> Board + Backlog.
 export const spaces = pgTable("spaces", {
   id: uuid("id").defaultRandom().primaryKey(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
@@ -52,24 +44,17 @@ export const spaces = pgTable("spaces", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── Sprints ──────────────────────────────────────────────────────────────────
 // Sprints only apply to scrum spaces; a work item's sprintId is null while
 // it lives in the backlog and set once it's pulled into an active/planned sprint.
-
 export const sprints = pgTable("sprints", {
   id: uuid("id").defaultRandom().primaryKey(),
   spaceId: uuid("space_id").notNull().references(() => spaces.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  status: text("status")
-    .$type<"planned" | "active" | "completed">()
-    .notNull()
-    .default("planned"),
+  status: text("status").$type<"planned" | "active" | "completed">().notNull().default("planned"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-// ─── Work Items ───────────────────────────────────────────────────────────────
 
 export const workItems = pgTable("work_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -78,10 +63,7 @@ export const workItems = pgTable("work_items", {
   // Subtasks reference their parent epic/story/task/bug via parentId.
   parentId: uuid("parent_id"),
   title: text("title").notNull(),
-  type: text("type")
-    .$type<"epic" | "story" | "task" | "subtask" | "bug">()
-    .notNull()
-    .default("task"),
+  type: text("type").$type<"epic" | "story" | "task" | "subtask" | "bug">().notNull().default("task"),
   status: text("status").notNull().default("todo"), // todo | inprogress | inreview | done
   assigneeId: uuid("assignee_id").references(() => users.id),
   dueDate: timestamp("due_date"),
@@ -90,16 +72,11 @@ export const workItems = pgTable("work_items", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── Inferred Types ───────────────────────────────────────────────────────────
-
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
-export type NewWorkspace = typeof workspaces.$inferInsert;
 export type Space = typeof spaces.$inferSelect;
-export type NewSpace = typeof spaces.$inferInsert;
 export type Sprint = typeof sprints.$inferSelect;
-export type NewSprint = typeof sprints.$inferInsert;
 export type WorkItem = typeof workItems.$inferSelect;
 export type NewWorkItem = typeof workItems.$inferInsert;

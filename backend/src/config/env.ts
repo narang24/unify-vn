@@ -8,7 +8,16 @@ function required(key: string): string {
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
-  port: Number(process.env.PORT ?? 4001),
+
+  // Auth service port (default 8001)
+  port: Number(process.env.PORT ?? 8001),
+
+  // Workspace service port (default 8002)
+  workspacePort: Number(process.env.WORKSPACE_PORT ?? 8002),
+
+  // Gateway port (default 8000) — used by the Node.js dev proxy and nginx
+  gatewayPort: Number(process.env.GATEWAY_PORT ?? 8000),
+
   serviceName: process.env.SERVICE_NAME ?? "unify-backend",
   frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:3000",
   apiPrefix: process.env.API_PREFIX ?? "/api/v1",

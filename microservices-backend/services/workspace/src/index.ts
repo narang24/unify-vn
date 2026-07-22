@@ -12,10 +12,6 @@ import { spacesRouter } from "./routes/spaces.js";
 import { workItemsRouter } from "./routes/workItems.js";
 import { sprintsRouter } from "./routes/sprints.js";
 
-// ─── App Setup ───────────────────────────────────────────────────────────────
-
-const WORKSPACE_PORT = env.workspacePort; // 8002
-
 const app = express();
 
 app.use(
@@ -33,36 +29,25 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// ─── Health ───────────────────────────────────────────────────────────────────
-
-app.get("/health", (_req, res) => {
-  res.json({ service: "workspace", status: "ok", port: WORKSPACE_PORT });
-});
-
-// ─── Routes ───────────────────────────────────────────────────────────────────
-// Each router module owns its own auth + validation — keeps this service
-// modular and easy to split further (e.g. sprints → its own microservice).
-
+// Every route module owns its own auth + validation — keeps this service
+// modular and easy to split further (e.g. sprints -> its own microservice).
 app.use(env.apiPrefix, workspacesRouter);
 app.use(env.apiPrefix, spacesRouter);
 app.use(env.apiPrefix, workItemsRouter);
 app.use(env.apiPrefix, sprintsRouter);
 
-// ─── Global Error Handler ─────────────────────────────────────────────────────
+app.get("/health", (_req, res) => res.json({ service: "workspace", status: "ok" }));
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error("[workspace unhandled error]", err);
   res.status(500).json({ error: "Internal server error." });
 });
 
-// ─── Bootstrap ────────────────────────────────────────────────────────────────
-
 async function start() {
   await pool.query("SELECT 1");
   console.log("✓ Workspace service connected to PostgreSQL");
-
-  app.listen(WORKSPACE_PORT, () => {
-    console.log(`✓ Workspace service listening on http://localhost:${WORKSPACE_PORT}`);
+  app.listen(env.port + 1, () => {
+    console.log(`✓ Workspace service listening on http://localhost:${env.port + 1}`);
   });
 }
 
