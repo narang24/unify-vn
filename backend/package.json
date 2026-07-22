@@ -1,0 +1,50 @@
+{
+  "name": "unify-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -e .env.development -- tsx watch src/index.ts",
+    "dev:auth": "dotenv -e .env.development -- tsx watch services/auth/src/index.ts",
+    "dev:workspace": "dotenv -e .env.development -- tsx watch services/workspace/src/index.ts",
+    "dev:all": "concurrently \"npm:dev:auth\" \"npm:dev:workspace\"",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:push": "dotenv -e .env.development -- drizzle-kit push",
+    "db:studio": "dotenv -e .env.development -- drizzle-kit studio"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "drizzle-orm": "^0.44.2",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12",
+    "passport-gitlab2": "^5.0.0",
+    "passport-google-oidc": "^0.1.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/express-session": "^1.18.1",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.13.3",
+    "@types/passport": "^1.0.17",
+    "@types/passport-github2": "^1.2.9",
+    "@types/passport-google-oidc": "^0.1.0",
+    "@types/pg": "^8.11.13",
+    "dotenv-cli": "^8.0.0",
+    "drizzle-kit": "^0.31.1",
+      "concurrently": "^8.2.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.8.3"
+  }
+}
