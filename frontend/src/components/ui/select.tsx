@@ -40,7 +40,7 @@ export function Select({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-border-subtle bg-white/55 px-3 text-sm text-foreground"
+        className="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border-subtle bg-panel px-3 text-[13px] text-foreground transition hover:border-accent/60"
       >
         <span className="flex items-center gap-2 truncate">
           {selected?.icon}
@@ -66,7 +66,7 @@ export function Select({
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] hover:bg-black/5",
+                  "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] hover:bg-foreground/[0.06]",
                   opt.value === value ? "text-accent font-medium" : "text-foreground",
                 )}
               >

@@ -80,14 +80,14 @@ export function AiSidebar({
                             {onOpenFullWorkspace && (
                                 <button
                                     onClick={onOpenFullWorkspace}
-                                    className="rounded-md p-1 text-muted hover:bg-black/5 hover:text-foreground"
+                                    className="rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
                                     aria-label="Open full Unify Intelli workspace"
                                     title="Open full Unify Intelli workspace"
                                 >
                                     <ExternalLink className="h-3.5 w-3.5" />
                                 </button>
                             )}
-                            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-black/5" aria-label="Close">
+                            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-foreground/[0.06]" aria-label="Close">
                                 <X className="h-4 w-4" />
                             </button>
                         </div>
@@ -144,7 +144,7 @@ export function AiSidebar({
                                 }}
                                 rows={1}
                                 placeholder="Ask about this repository…"
-                                className="max-h-24 flex-1 resize-none rounded-xl border border-border-subtle bg-white/55 px-3 py-2 text-[12.5px] text-foreground placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                                className="max-h-24 flex-1 resize-none rounded-xl border border-border-subtle bg-panel px-3 py-2 text-[12.5px] text-foreground placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                             />
                             <button
                                 onClick={send}

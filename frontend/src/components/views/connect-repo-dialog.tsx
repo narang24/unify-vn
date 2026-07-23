@@ -21,9 +21,10 @@ interface ConnectRepoDialogProps {
   open: boolean;
   onClose: () => void;
   spaceName: string;
+  onConnected?: (repo: import("@/lib/repo-types").ConnectedRepository) => void;
 }
 
-export function ConnectRepoDialog({ open, onClose, spaceName }: ConnectRepoDialogProps) {
+export function ConnectRepoDialog({ open, onClose, spaceName, onConnected }: ConnectRepoDialogProps) {
   const [provider, setProvider] = useState<Provider>("github");
   const [repoUrl, setRepoUrl] = useState("");
   const [connecting, setConnecting] = useState(false);
@@ -43,19 +44,29 @@ export function ConnectRepoDialog({ open, onClose, spaceName }: ConnectRepoDialo
     setError("");
     setTimeout(() => {
       const match = trimmed.match(/(?:github|gitlab)\.com\/([\w./-]+)/i);
-      const name = match?.[1] ?? trimmed;
+      const fullName = match?.[1] ?? trimmed;
+      const shortName = fullName.split("/").pop()?.replace(/\.git$/, "") ?? fullName;
       setConnected((prev) => [
         ...prev,
         {
           id: `repo-${Date.now()}`,
           provider,
-          name,
+          name: fullName,
           url: trimmed,
           connectedAt: new Date().toLocaleDateString(),
         },
       ]);
       setRepoUrl("");
       setConnecting(false);
+      onConnected?.({
+        id: `repo_${Date.now()}`,
+        name: shortName,
+        fullName: fullName.replace(/\.git$/, ""),
+        provider,
+        defaultBranch: "main",
+        connectedAt: "just now",
+        avatarColor: ["#3a93b1", "#7c5cff", "#1f9d6f", "#d1495b"][Math.floor(Math.random() * 4)],
+      });
     }, 900);
   }
 
@@ -68,7 +79,7 @@ export function ConnectRepoDialog({ open, onClose, spaceName }: ConnectRepoDialo
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/45"
           onClick={onClose}
         />
         <motion.div
@@ -89,7 +100,7 @@ export function ConnectRepoDialog({ open, onClose, spaceName }: ConnectRepoDialo
                 <p className="text-[11.5px] text-muted">{spaceName}</p>
               </div>
             </div>
-            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-black/5">
+            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-foreground/[0.06]">
               <X className="h-4 w-4" />
             </button>
           </div>

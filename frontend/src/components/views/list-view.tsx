@@ -93,7 +93,7 @@ export function ListView({ items, onStatusChange }: ListViewProps) {
         {/* Type filter */}
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <button className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium text-muted hover:bg-black/5 hover:text-foreground transition", filterType && "text-accent")}>
+            <button className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium text-muted hover:bg-foreground/[0.06] hover:text-foreground transition", filterType && "text-accent")}>
               <Filter className="h-3.5 w-3.5" />
               {filterType ? WORK_ITEM_TYPES[filterType as keyof typeof WORK_ITEM_TYPES]?.label : "Type"}
             </button>
@@ -115,7 +115,7 @@ export function ListView({ items, onStatusChange }: ListViewProps) {
         {/* Status filter */}
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <button className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium text-muted hover:bg-black/5 hover:text-foreground transition", filterStatus && "text-accent")}>
+            <button className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium text-muted hover:bg-foreground/[0.06] hover:text-foreground transition", filterStatus && "text-accent")}>
               <Filter className="h-3.5 w-3.5" />
               {filterStatus ? DEFAULT_COLUMNS.find((c) => c.id === filterStatus)?.label : "Status"}
             </button>

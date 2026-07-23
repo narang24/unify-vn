@@ -9,9 +9,9 @@ import { IssuesView } from "@/components/repo/issues-view";
 import { PullRequestsView } from "@/components/repo/pull-requests-view";
 import { AiSidebar } from "@/components/repo/ai-sidebar";
 import { SelectionActionBar } from "@/components/repo/selection-action-bar";
-import { CreateWorkItemDialog } from "@/components/create-work-item-dialog";
+import { WorkItemDialog } from "@/components/create-work-item-dialog";
 import type { ConnectedRepository, ContextChip } from "@/lib/repo-types";
-import type { WorkItemType } from "@/lib/work-item-types";
+import type { WorkItemType, WorkItemAttachment } from "@/lib/work-item-types";
 
 type RepoTab = "code" | "issues" | "prs";
 
@@ -27,7 +27,7 @@ export function RepoWorkspace({
     onOpenIntelliWorkspace,
 }: {
     repo: ConnectedRepository;
-    onCreateWorkItem: (title: string, type: WorkItemType) => void;
+    onCreateWorkItem: (title: string, type: WorkItemType, attachments?: WorkItemAttachment[]) => void;
     onOpenIntelliWorkspace?: () => void;
 }) {
     const [activeTab, setActiveTab] = useState<RepoTab>("code");
@@ -144,7 +144,7 @@ export function RepoWorkspace({
                         ) : (
                             <button
                                 onClick={() => setSelectMode(true)}
-                                className="rounded-md px-2.5 py-1 text-[12px] font-medium text-muted hover:bg-black/5 hover:text-foreground"
+                                className="rounded-md px-2.5 py-1 text-[12px] font-medium text-muted hover:bg-foreground/[0.06] hover:text-foreground"
                             >
                                 Select
                             </button>
@@ -204,17 +204,23 @@ export function RepoWorkspace({
                 onOpenFullWorkspace={onOpenIntelliWorkspace}
             />
 
-            <CreateWorkItemDialog
+            <WorkItemDialog
                 open={workItemDialogOpen}
                 onOpenChange={(o) => {
                     setWorkItemDialogOpen(o);
                     if (!o) setLinkedSnippet(null);
                 }}
-                onCreate={(title, type) => {
-                    onCreateWorkItem(title, type);
+                onSubmit={(payload) => {
+                    onCreateWorkItem(payload.title, payload.type, payload.attachments);
                     setLinkedSnippet(null);
                 }}
+                spaceName={repo.name}
                 linkedSnippet={linkedSnippet}
+                presetAttachments={
+                    !linkedSnippet
+                        ? contextChips.map((c) => ({ id: c.id, name: c.label, meta: c.type }))
+                        : undefined
+                }
             />
         </div>
     );

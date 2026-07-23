@@ -31,14 +31,14 @@ export function CodeSelectionTooltip({
                 >
                     <button
                         onClick={() => onAddToChat(selection.text)}
-                        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-foreground hover:bg-black/5"
+                        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-foreground hover:bg-foreground/[0.06]"
                     >
                         <MessageSquarePlus className="h-3.5 w-3.5 text-accent" /> Add to Chat
                     </button>
                     <div className="h-4 w-px bg-border-subtle" />
                     <button
                         onClick={() => onCreateWorkItem(selection.text)}
-                        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-foreground hover:bg-black/5"
+                        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-foreground hover:bg-foreground/[0.06]"
                     >
                         <ListPlus className="h-3.5 w-3.5 text-accent" /> Create Work Item
                     </button>

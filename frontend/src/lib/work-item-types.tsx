@@ -1,4 +1,4 @@
-import { Bug, Layers, BookMarked, CheckSquare, ListTree } from "lucide-react";
+import { Bug, Layers, BookMarked, CheckSquare, ListTree, Kanban, RefreshCw, SlidersHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type WorkItemType = "epic" | "story" | "task" | "subtask" | "bug";
@@ -51,7 +51,30 @@ export const WORK_ITEM_TYPES: Record<WorkItemType, WorkItemTypeConfig> = {
 
 export const WORK_ITEM_TYPE_LIST = Object.values(WORK_ITEM_TYPES);
 
-export type BoardKind = "kanban" | "scrum";
+/** Types offered when *creating* a work item — Epic is intentionally excluded
+ *  (epics are containers you select via "Select Epic", not board cards). */
+export const CREATABLE_WORK_ITEM_TYPES = WORK_ITEM_TYPE_LIST.filter((t) => t.value !== "epic");
+
+// ─── Board templates ────────────────────────────────────────────────────────
+export type BoardKind = "kanban" | "scrum" | "bugtracker" | "custom";
+
+export interface BoardTypeConfig {
+  value: BoardKind;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+}
+
+export const BOARD_TYPES: BoardTypeConfig[] = [
+  { value: "kanban", label: "Kanban", description: "Continuous flow of work across simple status columns.", icon: Kanban },
+  { value: "scrum", label: "Scrum", description: "Plan sprints from a backlog and ship in fixed cycles.", icon: RefreshCw },
+  { value: "bugtracker", label: "Bug Tracker", description: "Triage, track and resolve bugs on a focused board.", icon: Bug },
+  { value: "custom", label: "Custom Board", description: "Start from a clean Kanban and tailor statuses to your flow.", icon: SlidersHorizontal },
+];
+
+export function boardTypeLabel(kind: BoardKind) {
+  return BOARD_TYPES.find((b) => b.value === kind)?.label ?? "Kanban";
+}
 
 export interface BoardColumn {
   id: string;
@@ -65,8 +88,14 @@ export const DEFAULT_COLUMNS: BoardColumn[] = [
   { id: "done", label: "Done" },
 ];
 
-export function columnLabel(id: string) {
-  return DEFAULT_COLUMNS.find((c) => c.id === id)?.label ?? id;
+export function columnLabel(id: string, columns: BoardColumn[] = DEFAULT_COLUMNS) {
+  return columns.find((c) => c.id === id)?.label ?? id;
+}
+
+export interface WorkItemAttachment {
+  id: string;
+  name: string;
+  meta?: string;
 }
 
 export interface SpaceWorkItem {
@@ -76,4 +105,8 @@ export interface SpaceWorkItem {
   status: string;
   assignee?: string | null;
   dueDate?: string | null;
+  description?: string | null;
+  label?: string | null;
+  epicId?: string | null;
+  attachments?: WorkItemAttachment[];
 }

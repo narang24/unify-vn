@@ -161,7 +161,7 @@ export function TimelineView({ items }: TimelineViewProps) {
             </div>
 
             {/* Rows */}
-            <div className="relative" style={{ height: items.length * ROW_H }}>
+            <div className="relative" style={{ height: Math.max(items.length * ROW_H, 360) }}>
               {/* Weekend shading */}
               {months.flatMap((m) =>
                 Array.from({ length: m.days }, (_, i) => {
@@ -171,7 +171,7 @@ export function TimelineView({ items }: TimelineViewProps) {
                     return (
                       <div
                         key={`weekend-${m.year}-${m.month}-${i}`}
-                        className="absolute top-0 h-full bg-black/[0.03]"
+                        className="absolute top-0 h-full bg-foreground/[0.05]"
                         style={{ left: col * COL_WIDTH, width: COL_WIDTH }}
                       />
                     );
@@ -236,7 +236,7 @@ export function TimelineView({ items }: TimelineViewProps) {
                   return (
                     <div
                       key={`col-${m.year}-${m.month}-${i}`}
-                      className="absolute top-0 h-full border-r border-border-subtle/50"
+                      className="absolute top-0 h-full border-r border-border-subtle"
                       style={{ left: (col + 1) * COL_WIDTH }}
                     />
                   );

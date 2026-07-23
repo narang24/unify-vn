@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { WORK_ITEM_TYPES } from "@/lib/work-item-types";
 import type { SpaceWorkItem } from "@/lib/work-item-types";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 
 interface CalendarViewProps {
   items: SpaceWorkItem[];
+  onCreateWithDate?: (dateISO: string) => void;
 }
 
-export function CalendarView({ items }: CalendarViewProps) {
+export function CalendarView({ items, onCreateWithDate }: CalendarViewProps) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -122,24 +123,35 @@ export function CalendarView({ items }: CalendarViewProps) {
                 <div
                   key={i}
                   className={cn(
-                    "min-h-[80px] rounded-lg border p-1.5 transition-colors",
+                    "group relative min-h-[80px] rounded-lg border p-1.5 transition-colors",
                     cell.isCurrentMonth
-                      ? "border-border-subtle bg-panel hover:bg-panel-strong/20"
+                      ? "border-border-subtle bg-panel hover:bg-panel-strong/30"
                       : "border-transparent bg-transparent",
                     isTodayCell && "ring-2 ring-accent border-accent",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "mb-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11.5px] font-semibold",
-                      isTodayCell
-                        ? "bg-accent text-white"
-                        : cell.isCurrentMonth
-                        ? "text-foreground"
-                        : "text-muted/40",
+                  <div className="mb-1 flex items-center justify-between">
+                    <div
+                      className={cn(
+                        "inline-flex h-5 w-5 items-center justify-center rounded-full text-[11.5px] font-semibold",
+                        isTodayCell
+                          ? "bg-accent text-accent-foreground"
+                          : cell.isCurrentMonth
+                          ? "text-foreground"
+                          : "text-muted/40",
+                      )}
+                    >
+                      {cell.day}
+                    </div>
+                    {cell.isCurrentMonth && onCreateWithDate && (
+                      <button
+                        onClick={() => onCreateWithDate(key)}
+                        className="flex h-5 w-5 items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-foreground/[0.06] hover:text-accent group-hover:opacity-100"
+                        aria-label="Add work item on this day"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
                     )}
-                  >
-                    {cell.day}
                   </div>
 
                   {dayItems.slice(0, 3).map((item) => {

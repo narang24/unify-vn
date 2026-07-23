@@ -66,7 +66,7 @@ export function DialogContent({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="absolute inset-0 bg-[#031517]/50 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/45"
             onClick={() => ctx.setOpen(false)}
           />
           <motion.div
@@ -78,14 +78,14 @@ export function DialogContent({
             exit={{ opacity: 0, y: 8, scale: 0.97 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             className={cn(
-              "relative w-full max-w-sm rounded-2xl border border-border-subtle bg-panel p-5 shadow-[0_24px_60px_rgba(4,25,28,0.28)]",
+              "relative w-full max-w-sm rounded-xl border border-border-subtle bg-panel p-5 shadow-[0_24px_60px_rgba(0,0,0,0.32)]",
               className,
             )}
           >
             <button
               onClick={() => ctx.setOpen(false)}
               aria-label="Close"
-              className="absolute right-4 top-4 rounded-md p-1 text-muted hover:bg-black/5 hover:text-foreground"
+              className="absolute right-4 top-4 rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>

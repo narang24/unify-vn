@@ -94,7 +94,7 @@ export function DropdownMenuItem({
         ctx.setOpen(false);
       }}
       className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-foreground hover:bg-black/5",
+        "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-foreground hover:bg-foreground/[0.06]",
         destructive && "text-danger hover:bg-danger/10",
         className,
       )}

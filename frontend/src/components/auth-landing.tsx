@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Sparkles, GitBranch, Kanban, Bot } from "lucide-react";
 
 import { getToken, clearToken, fetchWithAuth, setToken } from "@/lib/auth";
 import { toast } from "@/lib/use-toast";
@@ -11,25 +13,21 @@ import { RepoWorkspace } from "@/components/repo/repo-workspace";
 import { UnifyIntelliWorkspace } from "@/components/unify-intelli/unify-intelli-workspace";
 import { CreateWorkspaceDialog } from "@/components/create-workspace-dialog";
 import { CreateSpaceDialog } from "@/components/create-space-dialog";
-import { CreateWorkItemDialog } from "@/components/create-work-item-dialog";
-import type { BoardKind, WorkItemType } from "@/lib/work-item-types";
+import { WorkItemDialog, type WorkItemPayload } from "@/components/create-work-item-dialog";
+import { DEFAULT_COLUMNS, type BoardColumn, type BoardKind, type SpaceWorkItem, type WorkItemType } from "@/lib/work-item-types";
 import type { ConnectedRepository } from "@/lib/repo-types";
 import { SEED_REPOSITORIES } from "@/lib/repo-types";
 
-type WorkItem = {
-  id: string;
-  title: string;
-  type: WorkItemType;
-  status: string;
-  assignee?: string | null;
-  dueDate?: string | null;
-};
+type WorkItem = SpaceWorkItem;
 
 type Space = {
   id: string;
   name: string;
   kind: BoardKind;
+  columns: BoardColumn[];
   workItems: WorkItem[];
+  pinned?: boolean;
+  repoId?: string | null;
 };
 
 type Workspace = {
@@ -38,7 +36,7 @@ type Workspace = {
   spaces: Space[];
 };
 
-const STORAGE_KEY = "unify.workspaces.v2";
+const STORAGE_KEY = "unify.workspaces.v3";
 const REPO_STORAGE_KEY = "unify.repositories.v1";
 
 function uid(prefix = "id") {
@@ -54,8 +52,9 @@ function seededWorkspace(): Workspace {
         id: uid("sp"),
         name: "My Kanban Space",
         kind: "kanban",
+        columns: DEFAULT_COLUMNS.map((c) => ({ ...c })),
         workItems: [
-          { id: uid("wi"), title: "Bug Resolver", type: "bug", status: "inprogress", assignee: "VN", dueDate: "23 Jul" },
+          { id: uid("wi"), title: "Bug Resolver", type: "bug", status: "inprogress", assignee: "VN", dueDate: "2026-07-23" },
         ],
       },
     ],
@@ -67,6 +66,7 @@ export default function DashboardPage() {
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
   // ── Email/password auth state ────────────────────────────────────────────
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -84,6 +84,9 @@ export default function DashboardPage() {
   const [spaceDialogOpen, setSpaceDialogOpen] = useState(false);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemTargetStatus, setItemTargetStatus] = useState("todo");
+  const [itemDefaultDue, setItemDefaultDue] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<WorkItem | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
 
   // ── Repositories (first-class sidebar entities) ─────────────────────────
   const [repositories, setRepositories] = useState<ConnectedRepository[]>([]);
@@ -121,8 +124,23 @@ export default function DashboardPage() {
 
   function connectRepo(repo: ConnectedRepository) {
     setIntelliOpen(false);
-    setRepositories((r) => [repo, ...r]);
+    setRepositories((r) => (r.find((x) => x.id === repo.id) ? r : [repo, ...r]));
     setActiveRepoId(repo.id);
+    toast({ title: "Repository connected", description: repo.fullName, variant: "success" });
+  }
+
+  /** Connect a repo *to the active space* (from the space topbar). */
+  function connectRepoToSpace(repo: ConnectedRepository) {
+    setRepositories((r) => (r.find((x) => x.id === repo.id) ? r : [repo, ...r]));
+    if (activeWorkspaceId && activeSpaceId) {
+      setWorkspaces((all) =>
+        all.map((ws) =>
+          ws.id !== activeWorkspaceId
+            ? ws
+            : { ...ws, spaces: ws.spaces.map((sp) => (sp.id === activeSpaceId ? { ...sp, repoId: repo.id } : sp)) },
+        ),
+      );
+    }
     toast({ title: "Repository connected", description: repo.fullName, variant: "success" });
   }
 
@@ -131,7 +149,6 @@ export default function DashboardPage() {
   // ── Auth check ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!getToken()) {
-      // No token — show the login page immediately
       setLoading(false);
       return;
     }
@@ -143,7 +160,6 @@ export default function DashboardPage() {
       .then((data) => setUser(data.user))
       .catch(() => {
         clearToken();
-        // Token invalid/expired — show the login page
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -197,6 +213,7 @@ export default function DashboardPage() {
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
   const activeSpace = activeWorkspace?.spaces.find((s) => s.id === activeSpaceId) ?? activeWorkspace?.spaces[0];
+  const activeSpaceRepo = activeSpace?.repoId ? repositories.find((r) => r.id === activeSpace.repoId) ?? null : null;
 
   // ── Mutations (optimistic, local-first) ─────────────────────────────────
   function createWorkspace(name: string) {
@@ -216,12 +233,13 @@ export default function DashboardPage() {
 
   function createSpace(name: string, kind: BoardKind) {
     if (!activeWorkspaceId) return;
-    const sp: Space = { id: uid("sp"), name, kind, workItems: [] };
+    const sp: Space = { id: uid("sp"), name, kind, columns: DEFAULT_COLUMNS.map((c) => ({ ...c })), workItems: [] };
     setWorkspaces((all) =>
       all.map((ws) => (ws.id === activeWorkspaceId ? { ...ws, spaces: [sp, ...ws.spaces] } : ws)),
     );
     setActiveSpaceId(sp.id);
     setActiveRepoId(null);
+    setIntelliOpen(false);
     toast({ title: "Space created", description: `${name} · ${kind}`, variant: "success" });
 
     fetchWithAuth(`${apiBase}/api/v1/workspaces/${activeWorkspaceId}/spaces`, {
@@ -231,9 +249,30 @@ export default function DashboardPage() {
     }).catch(() => { });
   }
 
-  function createWorkItem(title: string, type: WorkItemType) {
+  function upsertWorkItem(payload: WorkItemPayload) {
     if (!activeWorkspaceId || !activeSpaceId) return;
-    const item: WorkItem = { id: uid("wi"), title, type, status: itemTargetStatus };
+
+    // Editing an existing item
+    if (payload.id) {
+      setWorkspaces((all) =>
+        all.map((ws) => ({
+          ...ws,
+          spaces: ws.spaces.map((sp) => ({
+            ...sp,
+            workItems: sp.workItems.map((wi) => (wi.id === payload.id ? { ...wi, ...payload } : wi)),
+          })),
+        })),
+      );
+      toast({ title: "Work item updated", description: payload.title, variant: "success" });
+      fetchWithAuth(`${apiBase}/api/v1/work_items/${payload.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => { });
+      return;
+    }
+
+    const item: WorkItem = { id: uid("wi"), status: itemTargetStatus, ...payload };
     setWorkspaces((all) =>
       all.map((ws) =>
         ws.id !== activeWorkspaceId
@@ -246,26 +285,34 @@ export default function DashboardPage() {
           },
       ),
     );
-    toast({ title: `${type[0].toUpperCase()}${type.slice(1)} created`, description: title, variant: "success" });
+    toast({ title: `${payload.type[0].toUpperCase()}${payload.type.slice(1)} created`, description: payload.title, variant: "success" });
 
     fetchWithAuth(`${apiBase}/api/v1/spaces/${activeSpaceId}/work_items`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, type, status: itemTargetStatus }),
+      body: JSON.stringify(item),
     }).catch(() => { });
   }
 
-  /** Used for work items created from the repo Code tab ("Create Work Item" on a
-   *  selected snippet). Falls back to the first available space if none is active
-   *  yet, since the user may be inside a Repository Workspace with no space selected. */
-  function createWorkItemFromRepo(title: string, type: WorkItemType) {
+  function deleteWorkItem(id: string) {
+    setWorkspaces((all) =>
+      all.map((ws) => ({
+        ...ws,
+        spaces: ws.spaces.map((sp) => ({ ...sp, workItems: sp.workItems.filter((wi) => wi.id !== id) })),
+      })),
+    );
+    toast({ title: "Work item deleted", variant: "success" });
+    fetchWithAuth(`${apiBase}/api/v1/work_items/${id}`, { method: "DELETE" }).catch(() => { });
+  }
+
+  function createWorkItemFromRepo(title: string, type: WorkItemType, attachments?: { id: string; name: string; meta?: string }[]) {
     const targetSpaceId = activeSpaceId ?? activeWorkspace?.spaces[0]?.id;
     const targetWorkspaceId = activeWorkspaceId ?? workspaces[0]?.id;
     if (!targetSpaceId || !targetWorkspaceId) {
       toast({ title: "Create a space first", description: "Work items need a space to live in.", variant: "error" });
       return;
     }
-    const item: WorkItem = { id: uid("wi"), title, type, status: "todo" };
+    const item: WorkItem = { id: uid("wi"), title, type, status: "todo", attachments };
     setWorkspaces((all) =>
       all.map((ws) =>
         ws.id !== targetWorkspaceId
@@ -293,6 +340,46 @@ export default function DashboardPage() {
     }).catch(() => { });
   }
 
+  function addColumn(label: string) {
+    if (!activeWorkspaceId || !activeSpaceId) return;
+    const col: BoardColumn = { id: uid("col"), label };
+    setWorkspaces((all) =>
+      all.map((ws) => ({
+        ...ws,
+        spaces: ws.spaces.map((sp) => (sp.id === activeSpaceId ? { ...sp, columns: [...(sp.columns ?? DEFAULT_COLUMNS), col] } : sp)),
+      })),
+    );
+    toast({ title: "Status added", description: label, variant: "success" });
+  }
+
+  function togglePinSpace(spaceId: string) {
+    setWorkspaces((all) =>
+      all.map((ws) => ({
+        ...ws,
+        spaces: ws.spaces.map((sp) => (sp.id === spaceId ? { ...sp, pinned: !sp.pinned } : sp)),
+      })),
+    );
+  }
+
+  function deleteSpace(spaceId: string) {
+    setWorkspaces((all) => all.map((ws) => ({ ...ws, spaces: ws.spaces.filter((sp) => sp.id !== spaceId) })));
+    if (activeSpaceId === spaceId) setActiveSpaceId(null);
+    toast({ title: "Space deleted", variant: "success" });
+  }
+
+  // ── Reordering (drag-and-drop from the sidebar) ─────────────────────────
+  function reorderWorkspaces(ids: string[]) {
+    setWorkspaces((all) => ids.map((id) => all.find((w) => w.id === id)!).filter(Boolean));
+  }
+  function reorderSpaces(workspaceId: string, ids: string[]) {
+    setWorkspaces((all) =>
+      all.map((ws) => (ws.id === workspaceId ? { ...ws, spaces: ids.map((id) => ws.spaces.find((s) => s.id === id)!).filter(Boolean) } : ws)),
+    );
+  }
+  function reorderRepos(ids: string[]) {
+    setRepositories((all) => ids.map((id) => all.find((r) => r.id === id)!).filter(Boolean));
+  }
+
   async function handleEmailAuth(e: React.FormEvent) {
     e.preventDefault();
     setAuthError(null);
@@ -317,6 +404,17 @@ export default function DashboardPage() {
       }
       setToken(data.accessToken);
       setUser(data.user);
+      setAuthModalOpen(false);
+      // First sign-up → ensure a Default Workspace exists and land in the shell.
+      if (authTab === "signup") {
+        setWorkspaces((prev) => {
+          if (prev.length > 0) return prev;
+          const seeded = seededWorkspace();
+          setActiveWorkspaceId(seeded.id);
+          setActiveSpaceId(seeded.spaces[0].id);
+          return [seeded];
+        });
+      }
     } catch {
       setAuthError("Network error. Please check your connection.");
     } finally {
@@ -333,6 +431,12 @@ export default function DashboardPage() {
 
   const apiBase2 = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
+  function openAuth(tab: "signin" | "signup") {
+    setAuthTab(tab);
+    setAuthError(null);
+    setAuthModalOpen(true);
+  }
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -341,172 +445,165 @@ export default function DashboardPage() {
     );
   }
 
-  // ── Login / Signup page (shown when unauthenticated) ─────────────────────
+  // ── Landing page + auth modal (shown when unauthenticated) ───────────────
   if (!user) {
     return (
-      <div className="auth-page-root">
-        <div className="auth-card">
-          {/* Logo */}
-          <div className="auth-logo-wrap">
-            <div className="auth-logo-icon">U</div>
-            <h1 className="auth-title">Welcome to Unify</h1>
-            <p className="auth-subtitle">
-              {authTab === "signin" ? "Sign in to continue" : "Create your account"}
-            </p>
-          </div>
+      <div className="landing-root">
+        <LandingHero onSignIn={() => openAuth("signin")} onSignUp={() => openAuth("signup")} />
 
-          {/* Tabs */}
-          <div className="auth-tabs" role="tablist">
-            <button
-              id="auth-tab-signin"
-              role="tab"
-              aria-selected={authTab === "signin"}
-              className={`auth-tab${authTab === "signin" ? " auth-tab--active" : ""}`}
-              onClick={() => { setAuthTab("signin"); setAuthError(null); }}
-            >
-              Sign In
-            </button>
-            <button
-              id="auth-tab-signup"
-              role="tab"
-              aria-selected={authTab === "signup"}
-              className={`auth-tab${authTab === "signup" ? " auth-tab--active" : ""}`}
-              onClick={() => { setAuthTab("signup"); setAuthError(null); }}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          {/* Email / Password form */}
-          <form id="auth-email-form" className="auth-form" onSubmit={handleEmailAuth} noValidate>
-            {authTab === "signup" && (
-              <div className="auth-field">
-                <label htmlFor="auth-name" className="auth-label">Full Name</label>
-                <input
-                  id="auth-name"
-                  type="text"
-                  autoComplete="name"
-                  placeholder="Jane Doe"
-                  className="auth-input"
-                  value={authName}
-                  onChange={(e) => setAuthName(e.target.value)}
-                />
-              </div>
-            )}
-
-            <div className="auth-field">
-              <label htmlFor="auth-email" className="auth-label">Email</label>
-              <input
-                id="auth-email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                required
-                className="auth-input"
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
+        <AnimatePresence>
+          {authModalOpen && (
+            <div className="fixed inset-0 z-200 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="absolute inset-0 bg-black/45"
+                onClick={() => setAuthModalOpen(false)}
               />
-            </div>
-
-            <div className="auth-field">
-              <label htmlFor="auth-password" className="auth-label">Password</label>
-              <div className="auth-password-wrap">
-                <input
-                  id="auth-password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete={authTab === "signin" ? "current-password" : "new-password"}
-                  placeholder="••••••••"
-                  required
-                  className="auth-input auth-input--password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                />
+              <motion.div
+                role="dialog"
+                aria-modal="true"
+                initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="auth-card relative"
+              >
                 <button
-                  type="button"
-                  id="auth-toggle-password"
-                  className="auth-eye-btn"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowPassword((v) => !v)}
+                  onClick={() => setAuthModalOpen(false)}
+                  aria-label="Close"
+                  className="absolute right-3.5 top-3.5 rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  )}
+                  <X className="h-4 w-4" />
                 </button>
-              </div>
+
+                <div className="auth-logo-wrap">
+                  <div className="auth-logo-icon">U</div>
+                  <h1 className="auth-title">Welcome to Unify</h1>
+                  <p className="auth-subtitle">
+                    {authTab === "signin" ? "Sign in to continue" : "Create your account"}
+                  </p>
+                </div>
+
+                <div className="auth-tabs" role="tablist">
+                  <button
+                    role="tab"
+                    aria-selected={authTab === "signin"}
+                    className={`auth-tab${authTab === "signin" ? " auth-tab--active" : ""}`}
+                    onClick={() => { setAuthTab("signin"); setAuthError(null); }}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={authTab === "signup"}
+                    className={`auth-tab${authTab === "signup" ? " auth-tab--active" : ""}`}
+                    onClick={() => { setAuthTab("signup"); setAuthError(null); }}
+                  >
+                    Sign Up
+                  </button>
+                </div>
+
+                <form className="auth-form" onSubmit={handleEmailAuth} noValidate>
+                  {authTab === "signup" && (
+                    <div className="auth-field">
+                      <label htmlFor="auth-name" className="auth-label">Full Name</label>
+                      <input
+                        id="auth-name"
+                        type="text"
+                        autoComplete="name"
+                        placeholder="Jane Doe"
+                        className="auth-input"
+                        value={authName}
+                        onChange={(e) => setAuthName(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="auth-field">
+                    <label htmlFor="auth-email" className="auth-label">Email</label>
+                    <input
+                      id="auth-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      required
+                      className="auth-input"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="auth-field">
+                    <label htmlFor="auth-password" className="auth-label">Password</label>
+                    <div className="auth-password-wrap">
+                      <input
+                        id="auth-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete={authTab === "signin" ? "current-password" : "new-password"}
+                        placeholder="••••••••"
+                        required
+                        className="auth-input auth-input--password"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="auth-eye-btn"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() => setShowPassword((v) => !v)}
+                      >
+                        {showPassword ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {authError && <p className="auth-error" role="alert">{authError}</p>}
+
+                  <button type="submit" className="auth-submit-btn" disabled={authLoading}>
+                    {authLoading ? <span className="auth-spinner" /> : authTab === "signin" ? "Sign In" : "Create Account"}
+                  </button>
+                </form>
+
+                <div className="auth-divider">
+                  <span className="auth-divider-line" />
+                  <span className="auth-divider-text">or continue with</span>
+                  <span className="auth-divider-line" />
+                </div>
+
+                <div className="auth-oauth-row">
+                  <a href={`${apiBase2}/api/v1/auth/oauth/github`} className="auth-oauth-btn" title="Continue with GitHub">
+                    <svg className="auth-oauth-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+                    </svg>
+                    <span>GitHub</span>
+                  </a>
+                  <a href={`${apiBase2}/api/v1/auth/oauth/google`} className="auth-oauth-btn" title="Continue with Google">
+                    <svg className="auth-oauth-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                    </svg>
+                    <span>Google</span>
+                  </a>
+                  <a href={`${apiBase2}/api/v1/auth/oauth/gitlab`} className="auth-oauth-btn" title="Continue with GitLab">
+                    <svg className="auth-oauth-icon" viewBox="0 0 24 24" fill="#FC6D26" aria-hidden="true">
+                      <path d="M4.845.904a.93.93 0 0 0-.888.63L.108 11.854a1.307 1.307 0 0 0 .474 1.46L12 22.096l11.418-8.782a1.307 1.307 0 0 0 .474-1.46L20.044 1.534a.93.93 0 0 0-.888-.63.93.93 0 0 0-.888.63l-2.552 7.85H8.284L5.732 1.534A.93.93 0 0 0 4.845.904z" />
+                    </svg>
+                    <span>GitLab</span>
+                  </a>
+                </div>
+              </motion.div>
             </div>
-
-            {authError && (
-              <p className="auth-error" role="alert">{authError}</p>
-            )}
-
-            <button
-              id="auth-submit-btn"
-              type="submit"
-              className="auth-submit-btn"
-              disabled={authLoading}
-            >
-              {authLoading ? (
-                <span className="auth-spinner" />
-              ) : authTab === "signin" ? "Sign In" : "Create Account"}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="auth-divider">
-            <span className="auth-divider-line" />
-            <span className="auth-divider-text">or continue with</span>
-            <span className="auth-divider-line" />
-          </div>
-
-          {/* OAuth buttons */}
-          <div className="auth-oauth-row">
-            <a
-              id="auth-oauth-github"
-              href={`${apiBase2}/api/v1/auth/oauth/github`}
-              className="auth-oauth-btn"
-              title="Continue with GitHub"
-            >
-              <svg className="auth-oauth-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-              <span>GitHub</span>
-            </a>
-
-            <a
-              id="auth-oauth-google"
-              href={`${apiBase2}/api/v1/auth/oauth/google`}
-              className="auth-oauth-btn"
-              title="Continue with Google"
-            >
-              <svg className="auth-oauth-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              <span>Google</span>
-            </a>
-
-            <a
-              id="auth-oauth-gitlab"
-              href={`${apiBase2}/api/v1/auth/oauth/gitlab`}
-              className="auth-oauth-btn"
-              title="Continue with GitLab"
-            >
-              <svg className="auth-oauth-icon" viewBox="0 0 24 24" fill="#FC6D26" aria-hidden="true">
-                <path d="M4.845.904a.93.93 0 0 0-.888.63L.108 11.854a1.307 1.307 0 0 0 .474 1.46L12 22.096l11.418-8.782a1.307 1.307 0 0 0 .474-1.46L20.044 1.534a.93.93 0 0 0-.888-.63.93.93 0 0 0-.888.63l-2.552 7.85H8.284L5.732 1.534A.93.93 0 0 0 4.845.904z" />
-              </svg>
-              <span>GitLab</span>
-            </a>
-          </div>
-
-          <p className="auth-terms">
-            By signing in you agree to our{" "}
-            <a href="#" className="auth-terms-link">terms of service</a>.
-          </p>
-        </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -514,14 +611,18 @@ export default function DashboardPage() {
   const shellWorkspaces: ShellWorkspace[] = workspaces.map((w) => ({
     id: w.id,
     name: w.name,
-    spaces: w.spaces.map((s) => ({ id: s.id, name: s.name, kind: s.kind })),
+    spaces: w.spaces.map((s) => ({ id: s.id, name: s.name, kind: s.kind, pinned: s.pinned })),
   }));
+
+  const firstName = (user.fullName || user.email).split(/[ @]/)[0];
 
   return (
     <AppShell
       workspaces={shellWorkspaces}
       activeWorkspaceId={activeWorkspace?.id ?? null}
       activeSpaceId={activeRepo || intelliOpen ? null : activeSpace?.id ?? null}
+      greetingName={firstName}
+      fullscreen={fullscreen}
       onSelectWorkspace={(id) => {
         setIntelliOpen(false);
         setActiveRepoId(null);
@@ -536,9 +637,14 @@ export default function DashboardPage() {
       onCreateWorkspace={() => setWorkspaceDialogOpen(true)}
       onCreateSpace={() => setSpaceDialogOpen(true)}
       onCreateItem={() => {
+        setEditingItem(null);
         setItemTargetStatus("todo");
+        setItemDefaultDue(null);
         setItemDialogOpen(true);
       }}
+      onReorderWorkspaces={reorderWorkspaces}
+      onReorderSpaces={reorderSpaces}
+      onReorderRepos={reorderRepos}
       repositories={repositories}
       activeRepoId={activeRepoId}
       onSelectRepo={selectRepo}
@@ -567,16 +673,43 @@ export default function DashboardPage() {
         </div>
       ) : (
         <SpaceTopbar
+          key={activeSpace.id}
           spaceName={activeSpace.name}
           workspaceName={activeWorkspace?.name}
+          boardType={activeSpace.kind}
+          columns={activeSpace.columns ?? DEFAULT_COLUMNS}
           items={activeSpace.workItems}
+          pinned={!!activeSpace.pinned}
+          currentUser={user}
+          connectedRepo={activeSpaceRepo}
+          fullscreen={fullscreen}
+          onToggleFullscreen={() => setFullscreen((f) => !f)}
           onMove={moveWorkItem}
           onCreate={(status) => {
+            setEditingItem(null);
             setItemTargetStatus(status);
+            setItemDefaultDue(null);
             setItemDialogOpen(true);
           }}
+          onCreateWithDate={(dateISO) => {
+            setEditingItem(null);
+            setItemTargetStatus("todo");
+            setItemDefaultDue(dateISO);
+            setItemDialogOpen(true);
+          }}
+          onEditItem={(item) => {
+            setEditingItem(item);
+            setItemDialogOpen(true);
+          }}
+          onAddColumn={addColumn}
+          onConnectRepo={connectRepoToSpace}
+          onViewRepo={(id) => selectRepo(id)}
+          onPinSpace={() => togglePinSpace(activeSpace.id)}
+          onDeleteSpace={() => deleteSpace(activeSpace.id)}
           onCreateBacklog={(target) => {
+            setEditingItem(null);
             setItemTargetStatus(target === "sprint" ? "inprogress" : "todo");
+            setItemDefaultDue(null);
             setItemDialogOpen(true);
           }}
         />
@@ -588,12 +721,85 @@ export default function DashboardPage() {
         onCreate={createWorkspace}
       />
       <CreateSpaceDialog open={spaceDialogOpen} onOpenChange={setSpaceDialogOpen} onCreate={createSpace} />
-      <CreateWorkItemDialog
+      <WorkItemDialog
         open={itemDialogOpen}
-        onOpenChange={setItemDialogOpen}
-        onCreate={createWorkItem}
+        onOpenChange={(o) => { setItemDialogOpen(o); if (!o) setEditingItem(null); }}
+        onSubmit={upsertWorkItem}
+        onDelete={deleteWorkItem}
         disabled={!activeSpace}
+        spaceName={activeSpace?.name ?? ""}
+        epics={activeSpace?.workItems.filter((w) => w.type === "epic") ?? []}
+        editing={editingItem}
+        defaultDueDate={itemDefaultDue}
       />
     </AppShell>
+  );
+}
+
+// ─── Landing hero ────────────────────────────────────────────────────────────
+
+function LandingHero({ onSignIn, onSignUp }: { onSignIn: () => void; onSignUp: () => void }) {
+  const features = [
+    { icon: Kanban, title: "Boards that flow", desc: "Kanban, Scrum, bug tracking and custom boards — drag, drop, done." },
+    { icon: GitBranch, title: "Repos, connected", desc: "Bring GitHub & GitLab in. Turn code and issues into work items." },
+    { icon: Bot, title: "Unify Intelli", desc: "An AI teammate that understands your repos, issues and plans." },
+  ];
+  return (
+    <>
+      <header className="landing-nav">
+        <div className="flex items-center gap-2">
+          <div className="landing-logo">U</div>
+          <span className="text-[17px] font-semibold tracking-tight text-foreground">Unify</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={onSignIn} className="landing-btn landing-btn--ghost">Sign In</button>
+          <button onClick={onSignUp} className="landing-btn landing-btn--primary">Sign Up</button>
+        </div>
+      </header>
+
+      <main className="landing-main">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="landing-hero"
+        >
+          <span className="landing-pill">
+            <Sparkles className="h-3.5 w-3.5" /> AI-native project workspace
+          </span>
+          <h1 className="landing-title">
+            Where your <span className="landing-title-accent">plans</span> and{" "}
+            <span className="landing-title-accent">code</span> finally meet.
+          </h1>
+          <p className="landing-sub">
+            Unify brings boards, backlogs, repositories and an AI teammate into one compact,
+            seamless workspace — so your team can plan and ship without switching tabs.
+          </p>
+          <div className="landing-cta-row">
+            <button onClick={onSignUp} className="landing-btn landing-btn--primary landing-btn--lg">
+              Get started — it&apos;s free
+            </button>
+            <button onClick={onSignIn} className="landing-btn landing-btn--outline landing-btn--lg">
+              Sign in
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+          className="landing-features"
+        >
+          {features.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="landing-feature">
+              <div className="landing-feature-icon"><Icon className="h-4 w-4" /></div>
+              <h3 className="landing-feature-title">{title}</h3>
+              <p className="landing-feature-desc">{desc}</p>
+            </div>
+          ))}
+        </motion.div>
+      </main>
+    </>
   );
 }

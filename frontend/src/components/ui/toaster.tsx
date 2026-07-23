@@ -28,7 +28,7 @@ export function Toaster() {
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
               className={cn(
-                "pointer-events-auto flex w-[92vw] max-w-80 items-start gap-2 rounded-xl border border-border-subtle bg-panel/95 px-3 py-2.5 text-[13px] shadow-[0_10px_30px_rgba(4,25,28,0.16)] backdrop-blur-sm",
+                "pointer-events-auto flex w-[92vw] max-w-80 items-start gap-2 rounded-xl border border-border-subtle bg-panel/95 px-3 py-2.5 text-[13px] shadow-[0_10px_30px_rgba(4,25,28,0.16)]",
               )}
             >
               <Icon
@@ -47,7 +47,7 @@ export function Toaster() {
               </div>
               <button
                 onClick={() => dismissToast(t.id)}
-                className="shrink-0 rounded-md p-0.5 text-muted hover:bg-black/5 hover:text-foreground"
+                className="shrink-0 rounded-md p-0.5 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
                 aria-label="Dismiss"
               >
                 <X className="h-3.5 w-3.5" />

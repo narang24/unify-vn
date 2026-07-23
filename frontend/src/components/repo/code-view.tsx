@@ -90,7 +90,7 @@ export function CodeView({
                 <div className="flex items-center gap-2 border-b border-border-subtle bg-panel px-3 py-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger>
-                            <button className="flex items-center gap-1.5 rounded-md border border-border-subtle px-2 py-1 text-[12px] font-medium hover:bg-black/5">
+                            <button className="flex items-center gap-1.5 rounded-md border border-border-subtle px-2 py-1 text-[12px] font-medium hover:bg-foreground/[0.06]">
                                 <GitBranch className="h-3.5 w-3.5 text-accent" />
                                 {branch}
                             </button>

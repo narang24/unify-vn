@@ -20,7 +20,7 @@ export function ContextChip({ chip, onRemove }: { chip: ContextChipData; onRemov
             {onRemove && (
                 <button
                     onClick={() => onRemove(chip.id)}
-                    className="ml-0.5 shrink-0 rounded-full p-0.5 text-muted hover:bg-black/10 hover:text-foreground"
+                    className="ml-0.5 shrink-0 rounded-full p-0.5 text-muted hover:bg-foreground/10 hover:text-foreground"
                     aria-label={`Remove ${chip.label}`}
                 >
                     <X className="h-2.5 w-2.5" />

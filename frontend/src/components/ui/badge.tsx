@@ -11,7 +11,7 @@ export function Badge({
         "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none",
         variant === "default" && "bg-accent/12 text-accent",
         variant === "outline" && "border border-border-subtle text-muted",
-        variant === "muted" && "bg-black/5 text-muted",
+        variant === "muted" && "bg-foreground/[0.06] text-muted",
         className,
       )}
       {...props}

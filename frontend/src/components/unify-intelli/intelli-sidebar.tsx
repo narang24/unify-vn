@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, MessageSquare, Clock, ChevronsLeft, ChevronsRight, Filter, Search } from "lucide-react";
+import { Plus, MessageSquare, Clock, PanelLeftClose, PanelLeftOpen, Filter, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import type { IntelliChat } from "@/lib/intelli-types";
@@ -44,10 +44,10 @@ export function IntelliSidebar({
         {!collapsed && <span className="flex-1 truncate text-[12px] font-semibold uppercase tracking-wide text-muted">Unify Intelli</span>}
         <button
           onClick={onToggleCollapsed}
-          className="ml-auto rounded-md p-1 text-muted hover:bg-black/5 hover:text-foreground"
+          className="ml-auto rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
       </div>
 
@@ -65,7 +65,7 @@ export function IntelliSidebar({
         <button
           onClick={() => onSelectPanel("chats")}
           className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium hover:bg-black/5",
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium hover:bg-foreground/[0.06]",
             activePanel === "chats" ? "bg-accent/10 text-accent" : "text-foreground",
             collapsed && "justify-center px-0",
           )}
@@ -76,7 +76,7 @@ export function IntelliSidebar({
         <button
           onClick={() => onSelectPanel("recents")}
           className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium hover:bg-black/5",
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium hover:bg-foreground/[0.06]",
             activePanel === "recents" ? "bg-accent/10 text-accent" : "text-foreground",
             collapsed && "justify-center px-0",
           )}
@@ -93,7 +93,7 @@ export function IntelliSidebar({
               <motion.div key="chats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
                 <div className="flex items-center justify-between px-1 py-2">
                   <span className="text-[12.5px] font-semibold text-foreground">Chats</span>
-                  <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-black/5 hover:text-foreground">
+                  <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-foreground/[0.06] hover:text-foreground">
                     <Filter className="h-3 w-3" /> Filter
                   </button>
                 </div>
@@ -150,7 +150,7 @@ function ChatRow({ chat, active, onClick }: { chat: IntelliChat; active: boolean
     <button
       onClick={onClick}
       className={cn(
-        "flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left hover:bg-black/5",
+        "flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left hover:bg-foreground/[0.06]",
         active && "bg-accent/10",
       )}
     >

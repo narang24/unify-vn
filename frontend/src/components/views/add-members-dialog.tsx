@@ -92,7 +92,7 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/45"
           onClick={onClose}
         />
         <motion.div
@@ -112,7 +112,7 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
                 <p className="text-[11.5px] text-muted">{spaceName}</p>
               </div>
             </div>
-            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-black/5">
+            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-foreground/[0.06]">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -133,7 +133,7 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
             {/* Role picker */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <button className="flex items-center gap-2 rounded-md border border-border-subtle px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-black/5 h-9 shrink-0">
+                <button className="flex items-center gap-2 rounded-md border border-border-subtle px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-foreground/[0.06] h-9 shrink-0">
                   {(() => {
                     const cfg = ROLE_CONFIG[role];
                     const Icon = cfg.icon;
@@ -180,7 +180,7 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 6 }}
                     transition={{ duration: 0.15 }}
-                    className="flex items-center gap-3 rounded-xl p-2 hover:bg-black/5"
+                    className="flex items-center gap-3 rounded-xl p-2 hover:bg-foreground/[0.06]"
                   >
                     <Avatar name={m.name} size={32} />
                     <div className="flex-1 min-w-0">
@@ -202,7 +202,7 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
                     {m.id !== "m1" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger>
-                          <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] hover:bg-black/5">
+                          <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] hover:bg-foreground/[0.06]">
                             <RoleIcon className={`h-3 w-3 ${roleCfg.color}`} />
                             {roleCfg.label}
                           </button>

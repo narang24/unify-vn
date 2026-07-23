@@ -75,7 +75,7 @@ export function UnifyIntelliWorkspace() {
         onSearchChange={setSearch}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="dotted-glow flex min-w-0 flex-1 flex-col">
         <AnimatePresence mode="wait">
           {!activeChat ? (
             <motion.div
@@ -167,7 +167,7 @@ function Composer({
       <div className="relative z-10 flex items-end gap-2 p-2.5">
         <button
           type="button"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-black/5 hover:text-foreground"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-foreground/[0.06] hover:text-foreground"
           aria-label="Attach a file"
         >
           <Paperclip className="h-4 w-4" />
