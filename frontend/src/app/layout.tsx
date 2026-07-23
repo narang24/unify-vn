@@ -21,6 +21,15 @@ export const metadata: Metadata = {
   title: `${appEnv.appName} - AI-native project workspace`,
   description:
     "Lightweight project management for students, startups, and open-source teams.",
+  icons: {
+    // NOTE: browsers render the favicon pixel-for-pixel — for a circular
+    // tab icon, /public/logo.png itself should have transparent corners
+    // (e.g. exported as a circular PNG/SVG). In-app usage (sidebar/topbar)
+    // is cropped to a circle via the <Logo /> component regardless.
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

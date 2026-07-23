@@ -7,10 +7,13 @@ import { getToken, clearToken, fetchWithAuth } from "@/lib/auth";
 import { toast } from "@/lib/use-toast";
 import { AppShell, type ShellWorkspace } from "@/components/app-shell";
 import { SpaceTopbar } from "@/components/space-topbar";
+import { RepoWorkspace } from "@/components/repo/repo-workspace";
 import { CreateWorkspaceDialog } from "@/components/create-workspace-dialog";
 import { CreateSpaceDialog } from "@/components/create-space-dialog";
 import { CreateWorkItemDialog } from "@/components/create-work-item-dialog";
 import type { BoardKind, WorkItemType } from "@/lib/work-item-types";
+import type { ConnectedRepository } from "@/lib/repo-types";
+import { SEED_REPOSITORIES } from "@/lib/repo-types";
 
 type WorkItem = {
   id: string;
@@ -35,6 +38,7 @@ type Workspace = {
 };
 
 const STORAGE_KEY = "unify.workspaces.v2";
+const REPO_STORAGE_KEY = "unify.repositories.v1";
 
 function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
@@ -70,6 +74,39 @@ export default function DashboardPage() {
   const [spaceDialogOpen, setSpaceDialogOpen] = useState(false);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemTargetStatus, setItemTargetStatus] = useState("todo");
+
+  // ── Repositories (first-class sidebar entities) ─────────────────────────
+  const [repositories, setRepositories] = useState<ConnectedRepository[]>([]);
+  const [activeRepoId, setActiveRepoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(REPO_STORAGE_KEY);
+      setRepositories(raw ? JSON.parse(raw) : SEED_REPOSITORIES);
+    } catch {
+      setRepositories(SEED_REPOSITORIES);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REPO_STORAGE_KEY, JSON.stringify(repositories));
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [repositories]);
+
+  function selectRepo(id: string) {
+    setActiveRepoId(id);
+  }
+
+  function connectRepo(repo: ConnectedRepository) {
+    setRepositories((r) => [repo, ...r]);
+    setActiveRepoId(repo.id);
+    toast({ title: "Repository connected", description: repo.fullName, variant: "success" });
+  }
+
+  const activeRepo = repositories.find((r) => r.id === activeRepoId) ?? null;
 
   // ── Auth check ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -140,21 +177,20 @@ export default function DashboardPage() {
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
   const activeSpace = activeWorkspace?.spaces.find((s) => s.id === activeSpaceId) ?? activeWorkspace?.spaces[0];
 
-
-
   // ── Mutations (optimistic, local-first) ─────────────────────────────────
   function createWorkspace(name: string) {
     const ws: Workspace = { id: uid("ws"), name, spaces: [] };
     setWorkspaces((s) => [ws, ...s]);
     setActiveWorkspaceId(ws.id);
     setActiveSpaceId(null);
+    setActiveRepoId(null);
     toast({ title: "Workspace created", description: name, variant: "success" });
 
     fetchWithAuth(`${apiBase}/api/v1/workspaces`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   function createSpace(name: string, kind: BoardKind) {
@@ -164,13 +200,14 @@ export default function DashboardPage() {
       all.map((ws) => (ws.id === activeWorkspaceId ? { ...ws, spaces: [sp, ...ws.spaces] } : ws)),
     );
     setActiveSpaceId(sp.id);
+    setActiveRepoId(null);
     toast({ title: "Space created", description: `${name} · ${kind}`, variant: "success" });
 
     fetchWithAuth(`${apiBase}/api/v1/workspaces/${activeWorkspaceId}/spaces`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, kind }),
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   function createWorkItem(title: string, type: WorkItemType) {
@@ -181,11 +218,11 @@ export default function DashboardPage() {
         ws.id !== activeWorkspaceId
           ? ws
           : {
-              ...ws,
-              spaces: ws.spaces.map((sp) =>
-                sp.id !== activeSpaceId ? sp : { ...sp, workItems: [item, ...sp.workItems] },
-              ),
-            },
+            ...ws,
+            spaces: ws.spaces.map((sp) =>
+              sp.id !== activeSpaceId ? sp : { ...sp, workItems: [item, ...sp.workItems] },
+            ),
+          },
       ),
     );
     toast({ title: `${type[0].toUpperCase()}${type.slice(1)} created`, description: title, variant: "success" });
@@ -194,7 +231,28 @@ export default function DashboardPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, type, status: itemTargetStatus }),
-    }).catch(() => {});
+    }).catch(() => { });
+  }
+
+  /** Used for work items created from the repo Code tab ("Create Work Item" on a
+   *  selected snippet). Falls back to the first available space if none is active
+   *  yet, since the user may be inside a Repository Workspace with no space selected. */
+  function createWorkItemFromRepo(title: string, type: WorkItemType) {
+    const targetSpaceId = activeSpaceId ?? activeWorkspace?.spaces[0]?.id;
+    const targetWorkspaceId = activeWorkspaceId ?? workspaces[0]?.id;
+    if (!targetSpaceId || !targetWorkspaceId) {
+      toast({ title: "Create a space first", description: "Work items need a space to live in.", variant: "error" });
+      return;
+    }
+    const item: WorkItem = { id: uid("wi"), title, type, status: "todo" };
+    setWorkspaces((all) =>
+      all.map((ws) =>
+        ws.id !== targetWorkspaceId
+          ? ws
+          : { ...ws, spaces: ws.spaces.map((sp) => (sp.id !== targetSpaceId ? sp : { ...sp, workItems: [item, ...sp.workItems] })) },
+      ),
+    );
+    toast({ title: `${type[0].toUpperCase()}${type.slice(1)} created from code`, description: title, variant: "success" });
   }
 
   function moveWorkItem(itemId: string, toStatus: string) {
@@ -211,7 +269,7 @@ export default function DashboardPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: toStatus }),
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   function handleSignOut() {
@@ -239,22 +297,32 @@ export default function DashboardPage() {
     <AppShell
       workspaces={shellWorkspaces}
       activeWorkspaceId={activeWorkspace?.id ?? null}
-      activeSpaceId={activeSpace?.id ?? null}
+      activeSpaceId={activeRepo ? null : activeSpace?.id ?? null}
       onSelectWorkspace={(id) => {
+        setActiveRepoId(null);
         setActiveWorkspaceId(id);
         setActiveSpaceId(null);
       }}
-      onSelectSpace={(id) => setActiveSpaceId(id)}
+      onSelectSpace={(id) => {
+        setActiveRepoId(null);
+        setActiveSpaceId(id);
+      }}
       onCreateWorkspace={() => setWorkspaceDialogOpen(true)}
       onCreateSpace={() => setSpaceDialogOpen(true)}
       onCreateItem={() => {
         setItemTargetStatus("todo");
         setItemDialogOpen(true);
       }}
+      repositories={repositories}
+      activeRepoId={activeRepoId}
+      onSelectRepo={selectRepo}
+      onConnectRepo={connectRepo}
       user={user}
       onSignOut={handleSignOut}
     >
-      {!activeSpace ? (
+      {activeRepo ? (
+        <RepoWorkspace repo={activeRepo} onCreateWorkItem={createWorkItemFromRepo} />
+      ) : !activeSpace ? (
         <div className="flex h-full items-center justify-center p-6 text-center">
           <div>
             <p className="text-sm font-medium text-foreground">Select or create a space to get started.</p>

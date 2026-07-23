@@ -32,6 +32,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
+import { RepoSidebarSection } from "@/components/repo/repo-sidebar-section";
+import type { ConnectedRepository } from "@/lib/repo-types";
 import { cn } from "@/lib/utils";
 
 export interface ShellSpace {
@@ -54,6 +57,10 @@ export function AppShell({
   onCreateWorkspace,
   onCreateSpace,
   onCreateItem,
+  repositories,
+  activeRepoId,
+  onSelectRepo,
+  onConnectRepo,
   user,
   onSignOut,
   children,
@@ -66,6 +73,10 @@ export function AppShell({
   onCreateWorkspace: () => void;
   onCreateSpace: () => void;
   onCreateItem: () => void;
+  repositories: ConnectedRepository[];
+  activeRepoId: string | null;
+  onSelectRepo: (id: string) => void;
+  onConnectRepo: (repo: ConnectedRepository) => void;
   user: { fullName?: string | null; email: string } | null;
   onSignOut: () => void;
   children: React.ReactNode;
@@ -88,6 +99,13 @@ export function AppShell({
       }}
       onCreateWorkspace={onCreateWorkspace}
       onCreateSpace={onCreateSpace}
+      repositories={repositories}
+      activeRepoId={activeRepoId}
+      onSelectRepo={(id) => {
+        onSelectRepo(id);
+        setMobileOpen(false);
+      }}
+      onConnectRepo={onConnectRepo}
       collapsed={collapsed}
     />
   );
@@ -132,9 +150,7 @@ export function AppShell({
           </Button>
 
           <div className="hidden items-center gap-1.5 sm:flex">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-[13px] font-bold text-accent-foreground">
-              U
-            </div>
+            <Logo size={26} />
             <span className="text-lg font-semibold italic tracking-tight text-accent">Unify</span>
           </div>
 
@@ -195,6 +211,10 @@ function SidebarBody({
   onSelectSpace,
   onCreateWorkspace,
   onCreateSpace,
+  repositories,
+  activeRepoId,
+  onSelectRepo,
+  onConnectRepo,
   collapsed,
 }: {
   workspaces: ShellWorkspace[];
@@ -204,6 +224,10 @@ function SidebarBody({
   onSelectSpace: (id: string) => void;
   onCreateWorkspace: () => void;
   onCreateSpace: () => void;
+  repositories: ConnectedRepository[];
+  activeRepoId: string | null;
+  onSelectRepo: (id: string) => void;
+  onConnectRepo: (repo: ConnectedRepository) => void;
   collapsed: boolean;
 }) {
   const navItems = [
@@ -229,7 +253,20 @@ function SidebarBody({
         ))}
       </nav>
 
-      <div className="mt-4 flex items-center justify-between px-2.5">
+      {/* ── Repositories (first-class, above Workspaces) ──────────────── */}
+      <div className="mt-4">
+        <RepoSidebarSection
+          repositories={repositories}
+          activeRepoId={activeRepoId}
+          onSelectRepo={onSelectRepo}
+          onConnectRepo={onConnectRepo}
+          collapsed={collapsed}
+        />
+      </div>
+
+      {!collapsed && <div className="my-2 h-px bg-border-subtle" />}
+
+      <div className="mt-2 flex items-center justify-between px-2.5">
         {!collapsed && (
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Workspaces</span>
         )}
