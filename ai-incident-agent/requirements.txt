@@ -1,0 +1,12 @@
+fastapi
+pydantic
+dotenv
+langchain
+langchain-community
+langchain-text-splitters
+langgraph
+requests
+GitPython
+chromadb
+sentence-transformers
+pypdf
