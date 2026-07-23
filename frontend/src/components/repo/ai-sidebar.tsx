@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, X, MousePointerClick, SendHorizontal, Bot } from "lucide-react";
+import { Lightbulb, X, SendHorizontal, Bot, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContextChip } from "@/components/repo/context-chip";
 import type { ChatMessage, ContextChip as ContextChipData } from "@/lib/repo-types";
@@ -15,18 +15,20 @@ export function AiSidebar({
     open,
     onClose,
     repoName,
-    selectMode,
-    onToggleSelectMode,
     contextChips,
     onRemoveChip,
+    onOpenFullWorkspace,
 }: {
     open: boolean;
     onClose: () => void;
     repoName: string;
-    selectMode: boolean;
-    onToggleSelectMode: () => void;
+    /** Kept for backwards compatibility with callers still tracking select mode externally. */
+    selectMode?: boolean;
+    onToggleSelectMode?: () => void;
     contextChips: ContextChipData[];
     onRemoveChip: (id: string) => void;
+    /** Opens the full, dedicated Unify Intelli workspace — continuing this conversation there. */
+    onOpenFullWorkspace?: () => void;
 }) {
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
@@ -60,31 +62,31 @@ export function AiSidebar({
             {open && (
                 <motion.div
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 360, opacity: 1 }}
+                    animate={{ width: "min(360px, 100vw)", opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                    className="flex h-full shrink-0 flex-col overflow-hidden border-l border-border-subtle bg-panel"
+                    className="fixed inset-y-0 right-0 z-40 flex h-full shrink-0 flex-col overflow-hidden border-l border-border-subtle bg-panel sm:static sm:z-auto"
                 >
-                    <div className="flex h-full shrink-0 flex-col" style={{ width: 360 }}>
+                    <div className="flex h-full shrink-0 flex-col" style={{ width: "min(360px, 100vw)" }}>
                         {/* Header */}
                         <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5">
                             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
-                                <Sparkles className="h-4 w-4 text-accent" />
+                                <Lightbulb className="h-4 w-4 text-accent" />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="text-[13px] font-semibold text-foreground">Ask Unify Intelli</p>
                                 <p className="truncate text-[11px] text-muted">{repoName}</p>
                             </div>
-                            <button
-                                onClick={onToggleSelectMode}
-                                className={cn(
-                                    "flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-medium",
-                                    selectMode ? "bg-accent/10 text-accent" : "text-muted hover:bg-black/5 hover:text-foreground",
-                                )}
-                                title="Toggle select mode to add files, folders, issues, and PRs as context"
-                            >
-                                <MousePointerClick className="h-3.5 w-3.5" /> Select
-                            </button>
+                            {onOpenFullWorkspace && (
+                                <button
+                                    onClick={onOpenFullWorkspace}
+                                    className="rounded-md p-1 text-muted hover:bg-black/5 hover:text-foreground"
+                                    aria-label="Open full Unify Intelli workspace"
+                                    title="Open full Unify Intelli workspace"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </button>
+                            )}
                             <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-black/5" aria-label="Close">
                                 <X className="h-4 w-4" />
                             </button>

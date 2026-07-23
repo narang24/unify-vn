@@ -27,7 +27,7 @@ export default function AuthCallbackPage() {
 
     setToken(token);
     setStatus("Signed in! Redirecting…");
-    setTimeout(() => router.replace("/dashboard"), 800);
+    setTimeout(() => router.replace("/"), 800);
   }, [router, searchParams]);
 
   return (

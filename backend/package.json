@@ -7,7 +7,7 @@
     "dev": "dotenv -e .env.development -- tsx watch src/index.ts",
     "dev:auth": "dotenv -e .env.development -- tsx watch services/auth/src/index.ts",
     "dev:workspace": "dotenv -e .env.development -- tsx watch services/workspace/src/index.ts",
-    "dev:all": "concurrently --names \"auth,workspace\" --prefix-colors \"cyan,green\" \"npm:dev:auth\" \"npm:dev:workspace\"",
+    "dev:all": "concurrently --names \"gateway,auth,workspace\" --prefix-colors \"yellow,cyan,green\" \"npm:dev:gateway\" \"npm:dev:auth\" \"npm:dev:workspace\"",
     "dev:gateway": "dotenv -e .env.development -- tsx watch src/index.ts",
     "dev:full": "concurrently --names \"gateway,auth,workspace\" --prefix-colors \"yellow,cyan,green\" \"npm:dev:gateway\" \"npm:dev:auth\" \"npm:dev:workspace\"",
     "start:auth": "dotenv -e .env.production -- node dist/services/auth/src/index.js",

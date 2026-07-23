@@ -335,14 +335,14 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="flex gap-4">
-              {activeSpace.boardColumns.map((colId) => (
+              {(activeSpace.boardColumns ?? ["todo", "inprogress", "inreview", "done"]).map((colId) => (
                 <div key={colId} className="w-72">
                   <div className="mb-2 flex items-center justify-between">
                     <div className="text-sm font-semibold">{colId === "todo" ? "To Do" : colId === "inprogress" ? "In Progress" : colId === "inreview" ? "In Review" : "Done"}</div>
                   </div>
                   <div className="space-y-3">
                     <AnimatePresence>
-                      {activeSpace.workItems.filter((wi) => wi.status === colId).map((wi) => (
+                      {(activeSpace.workItems ?? []).filter((wi) => wi.status === colId).map((wi) => (
                         <motion.div key={wi.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="rounded-lg border border-border-subtle bg-panel p-3">
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -352,7 +352,7 @@ export default function DashboardPage() {
                             <div className="flex flex-col items-end gap-2">
                               <div className="text-xs text-muted">{wi.dueDate ?? ""}</div>
                               <div className="flex gap-1">
-                                {activeSpace.boardColumns.map((to) => (
+                                {(activeSpace.boardColumns ?? ["todo", "inprogress", "inreview", "done"]).map((to) => (
                                   to === wi.status ? null : (
                                     <button key={to} onClick={() => moveWorkItem(wi.id, to)} className="text-xs rounded-md bg-[rgba(0,0,0,0.04)] px-2 py-1">→</button>
                                   )

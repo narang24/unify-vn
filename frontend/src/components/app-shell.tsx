@@ -18,6 +18,7 @@ import {
   LogOut,
   ChevronRight,
   Kanban,
+  Lightbulb,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,8 @@ export function AppShell({
   activeRepoId,
   onSelectRepo,
   onConnectRepo,
+  onOpenIntelli,
+  intelliActive,
   user,
   onSignOut,
   children,
@@ -77,6 +80,10 @@ export function AppShell({
   activeRepoId: string | null;
   onSelectRepo: (id: string) => void;
   onConnectRepo: (repo: ConnectedRepository) => void;
+  /** Opens the dedicated Unify Intelli AI workspace. */
+  onOpenIntelli?: () => void;
+  /** Whether the Unify Intelli workspace is the active view. */
+  intelliActive?: boolean;
   user: { fullName?: string | null; email: string } | null;
   onSignOut: () => void;
   children: React.ReactNode;
@@ -106,6 +113,8 @@ export function AppShell({
         setMobileOpen(false);
       }}
       onConnectRepo={onConnectRepo}
+      onOpenIntelli={onOpenIntelli}
+      intelliActive={intelliActive}
       collapsed={collapsed}
     />
   );
@@ -215,6 +224,8 @@ function SidebarBody({
   activeRepoId,
   onSelectRepo,
   onConnectRepo,
+  onOpenIntelli,
+  intelliActive,
   collapsed,
 }: {
   workspaces: ShellWorkspace[];
@@ -228,6 +239,8 @@ function SidebarBody({
   activeRepoId: string | null;
   onSelectRepo: (id: string) => void;
   onConnectRepo: (repo: ConnectedRepository) => void;
+  onOpenIntelli?: () => void;
+  intelliActive?: boolean;
   collapsed: boolean;
 }) {
   const navItems = [
@@ -252,6 +265,23 @@ function SidebarBody({
           </button>
         ))}
       </nav>
+
+      {/* ── Unify Intelli (dedicated AI workspace, above Repositories) ─── */}
+      <div className="mt-4">
+        <button
+          onClick={onOpenIntelli}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-colors",
+            intelliActive
+              ? "bg-accent text-white"
+              : "bg-black/[0.035] text-foreground hover:bg-black/[0.06] dark:bg-white/[0.05] dark:hover:bg-white/[0.09]",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          <Lightbulb className={cn("h-4 w-4 shrink-0", intelliActive ? "text-white" : "text-accent")} />
+          {!collapsed && "Unify Intelli"}
+        </button>
+      </div>
 
       {/* ── Repositories (first-class, above Workspaces) ──────────────── */}
       <div className="mt-4">
