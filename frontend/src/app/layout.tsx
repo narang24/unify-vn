@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import { appEnv } from "@/config/env";
 import { ThemeProvider } from "@/lib/theme-provider";
+import { PrefsProvider } from "@/lib/prefs-context";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -45,8 +46,10 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider>
-          {children}
-          <Toaster />
+          <PrefsProvider>
+            {children}
+            <Toaster />
+          </PrefsProvider>
         </ThemeProvider>
       </body>
     </html>

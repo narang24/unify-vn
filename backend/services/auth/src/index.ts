@@ -96,7 +96,13 @@ async function upsertOAuthUser(
   email: string,
   fullName?: string,
   avatarUrl?: string,
+  github?: { accessToken?: string; login?: string },
 ) {
+  const githubFields =
+    provider === "github"
+      ? { githubAccessToken: github?.accessToken ?? null, githubLogin: github?.login ?? null }
+      : {};
+
   // 1. Try by provider + providerAccountId
   const [byProvider] = await db
     .select()
@@ -107,7 +113,17 @@ async function upsertOAuthUser(
         eq(users.providerAccountId, providerAccountId),
       ),
     );
-  if (byProvider) return byProvider;
+  if (byProvider) {
+    if (provider === "github") {
+      const [updated] = await db
+        .update(users)
+        .set({ ...githubFields, updatedAt: new Date() })
+        .where(eq(users.id, byProvider.id))
+        .returning();
+      return updated;
+    }
+    return byProvider;
+  }
 
   // 2. Try by email (link existing local account)
   if (email) {
@@ -115,7 +131,7 @@ async function upsertOAuthUser(
     if (byEmail) {
       const [updated] = await db
         .update(users)
-        .set({ authProvider: provider, providerAccountId, avatarUrl, updatedAt: new Date() })
+        .set({ authProvider: provider, providerAccountId, avatarUrl, ...githubFields, updatedAt: new Date() })
         .where(eq(users.id, byEmail.id))
         .returning();
       return updated;
@@ -132,6 +148,7 @@ async function upsertOAuthUser(
       authProvider: provider,
       providerAccountId,
       avatarUrl: avatarUrl ?? null,
+      ...githubFields,
     })
     .returning();
   return created;
@@ -217,12 +234,21 @@ passport.use(
       clientID: env.githubClientId,
       clientSecret: env.githubClientSecret,
       callbackURL: `${env.apiPrefix}/auth/oauth/github/callback`,
-      scope: ["user:email"],
+      // `repo` + `read:user` let users browse code/issues/PRs/branches/commits
+      // right after connecting — no manual PAT or webhook setup required.
+      scope: ["user:email", "read:user", "repo"],
     },
-    async (_accessToken: string, _refreshToken: string, profile: OAuthProfile, done: any) => {
+    async (accessToken: string, _refreshToken: string, profile: OAuthProfile & { username?: string }, done: any) => {
       try {
         const email: string = profile.emails?.[0]?.value ?? profile.id + "@github.oauth";
-        const user = await upsertOAuthUser("github", profile.id, email, profile.displayName, profile.photos?.[0]?.value);
+        const user = await upsertOAuthUser(
+          "github",
+          profile.id,
+          email,
+          profile.displayName,
+          profile.photos?.[0]?.value,
+          { accessToken, login: profile.username },
+        );
         done(null, user);
       } catch (err) {
         done(err);
@@ -437,7 +463,15 @@ app.get(`${env.apiPrefix}/auth/me`, async (req, res) => {
     }
 
     res.json({
-      user: { id: user.id, fullName: user.fullName, email: user.email, authProvider: user.authProvider, avatarUrl: user.avatarUrl },
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        authProvider: user.authProvider,
+        avatarUrl: user.avatarUrl,
+        githubConnected: !!user.githubAccessToken,
+        githubLogin: user.githubLogin,
+      },
     });
   } catch {
     res.status(401).json({ error: "Invalid or expired token." });

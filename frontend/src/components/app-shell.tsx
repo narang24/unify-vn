@@ -37,9 +37,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import { RepoSidebarSection } from "@/components/repo/repo-sidebar-section";
 import { BoardCapsule } from "@/components/ui/board-capsule";
+import { usePrefs } from "@/lib/prefs-context";
 import type { ConnectedRepository } from "@/lib/repo-types";
 import type { BoardKind } from "@/lib/work-item-types";
 import { cn } from "@/lib/utils";
+
+export type NavKey = "recent" | "teams" | "starred";
 
 export interface ShellSpace {
   id: string;
@@ -67,6 +70,8 @@ interface AppShellProps {
   onReorderWorkspaces?: (ids: string[]) => void;
   onReorderSpaces?: (workspaceId: string, ids: string[]) => void;
   onReorderRepos?: (ids: string[]) => void;
+  activeNav?: NavKey | null;
+  onSelectNav?: (nav: NavKey) => void;
   repositories: ConnectedRepository[];
   activeRepoId: string | null;
   onSelectRepo: (id: string) => void;
@@ -219,11 +224,13 @@ function SidebarBody({
   onOpenIntelli,
   intelliActive,
   collapsed,
+  activeNav,
+  onSelectNav,
 }: SidebarBodyProps) {
-  const topNav = [
-    { icon: Clock, label: "Recent" },
-    { icon: Users, label: "Teams" },
-    { icon: Star, label: "Starred" },
+  const topNav: { icon: typeof Clock; label: string; nav: NavKey }[] = [
+    { icon: Clock, label: "Recent", nav: "recent" },
+    { icon: Users, label: "Teams", nav: "teams" },
+    { icon: Star, label: "Starred", nav: "starred" },
   ];
 
   const [draggingSection, setDraggingSection] = React.useState<null | "ws" | "repo">(null);
@@ -238,18 +245,23 @@ function SidebarBody({
 
       {/* Recent / Teams / Starred */}
       <nav className="space-y-0.5">
-        {topNav.map(({ icon: Icon, label }) => (
-          <button
-            key={label}
-            className={cn(
-              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-foreground hover:bg-foreground/[0.06]",
-              collapsed && "justify-center px-0",
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0 text-muted" />
-            {!collapsed && label}
-          </button>
-        ))}
+        {topNav.map(({ icon: Icon, label, nav }) => {
+          const active = activeNav === nav;
+          return (
+            <button
+              key={label}
+              onClick={() => onSelectNav?.(nav)}
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium hover:bg-foreground/[0.06]",
+                active ? "bg-accent/10 text-accent" : "text-foreground",
+                collapsed && "justify-center px-0",
+              )}
+            >
+              <Icon className={cn("h-4 w-4 shrink-0", active ? "text-accent" : "text-muted")} />
+              {!collapsed && label}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Unify Intelli (highlighted) */}
@@ -487,6 +499,8 @@ function SpaceRow({
   const controls = useDragControls();
   const [armed, setArmed] = React.useState(false);
   const armTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { isStarred, toggleStar } = usePrefs();
+  const starred = isStarred(sp.id);
 
   return (
     <Reorder.Item value={sp} dragListener={false} dragControls={controls} className="list-none">
@@ -515,6 +529,16 @@ function SpaceRow({
           <Kanban className="h-3 w-3 shrink-0 text-muted" />
           <span className="truncate">{sp.name}</span>
           <BoardCapsule kind={sp.kind} className="ml-auto shrink-0" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleStar(sp.id); }}
+          aria-label={starred ? "Unstar space" : "Star space"}
+          className={cn(
+            "shrink-0 rounded p-1 text-muted hover:text-amber-500",
+            starred ? "opacity-100 text-amber-500" : "opacity-0 group-hover:opacity-100",
+          )}
+        >
+          <Star className={cn("h-3 w-3", starred && "fill-amber-500")} />
         </button>
       </div>
     </Reorder.Item>

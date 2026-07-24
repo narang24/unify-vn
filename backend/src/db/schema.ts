@@ -21,6 +21,9 @@ export const users = pgTable("users", {
     .default("local"),
   providerAccountId: text("provider_account_id"), // provider's user ID for OAuth
   avatarUrl: text("avatar_url"),
+  // Stored GitHub OAuth token so users can browse repos without pasting a PAT.
+  githubAccessToken: text("github_access_token"),
+  githubLogin: text("github_login"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

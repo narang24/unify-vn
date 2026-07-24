@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Paperclip, SendHorizontal, Bot } from "lucide-react";
+import { Paperclip, SendHorizontal, Bot, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BorderBeam } from "@/components/ui/border-beam";
-import { Logo3D } from "@/components/unify-intelli/logo-3d";
 import { IntelliSidebar, type IntelliPanel } from "@/components/unify-intelli/intelli-sidebar";
 import { SEED_CHATS, newChat, type IntelliChat, type IntelliChatMessage } from "@/lib/intelli-types";
 
@@ -84,19 +83,36 @@ export function UnifyIntelliWorkspace() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="flex h-full flex-col items-center justify-center gap-6 px-4"
+              className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 px-4"
             >
-              <Logo3D />
               <div className="text-center">
-                <h1 className="font-display text-2xl italic font-semibold text-foreground sm:text-3xl">
-                  Let Unify Intelli merge your ideas!
-                </h1>
+                <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/12 text-accent ring-1 ring-accent/20">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">How can I help you ship today?</h1>
                 <p className="mt-1.5 text-[13px] text-muted">
-                  Ask about your repos, issues, and work items — all in one place.
+                  Ask about your repositories, deployments, issues and work items.
                 </p>
               </div>
 
               <Composer value={input} onChange={setInput} onSend={send} />
+
+              <div className="flex flex-wrap justify-center gap-2">
+                {[
+                  "Why did the last deployment fail?",
+                  "Summarize open pull requests",
+                  "What's in my backlog?",
+                  "Explain the auth flow",
+                ].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setInput(s)}
+                    className="rounded-full border border-border-subtle bg-panel px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-accent/50 hover:text-foreground"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </motion.div>
           ) : (
             <motion.div
@@ -159,11 +175,11 @@ function Composer({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-2xl border border-border-subtle bg-panel shadow-[0_18px_42px_rgba(1,106,131,0.12)]",
+        "relative w-full overflow-hidden rounded-2xl border border-border-subtle bg-panel shadow-[0_10px_30px_rgba(0,0,0,0.06)]",
         compact ? "max-w-2xl" : "max-w-xl",
       )}
     >
-      <BorderBeam size={80} duration={7} />
+      <BorderBeam size={64} duration={9} colorFrom="var(--accent)" colorTo="transparent" />
       <div className="relative z-10 flex items-end gap-2 p-2.5">
         <button
           type="button"

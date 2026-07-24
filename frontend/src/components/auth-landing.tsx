@@ -7,7 +7,9 @@ import { X, Sparkles, GitBranch, Kanban, Bot } from "lucide-react";
 
 import { getToken, clearToken, fetchWithAuth, setToken } from "@/lib/auth";
 import { toast } from "@/lib/use-toast";
-import { AppShell, type ShellWorkspace } from "@/components/app-shell";
+import { AppShell, type ShellWorkspace, type NavKey } from "@/components/app-shell";
+import { RecentsPanel, StarredPanel, TeamsPanel } from "@/components/nav-panels";
+import { usePrefs } from "@/lib/prefs-context";
 import { SpaceTopbar } from "@/components/space-topbar";
 import { RepoWorkspace } from "@/components/repo/repo-workspace";
 import { UnifyIntelliWorkspace } from "@/components/unify-intelli/unify-intelli-workspace";
@@ -124,6 +126,8 @@ export default function DashboardPage() {
   const [itemDefaultDue, setItemDefaultDue] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<WorkItem | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [activeNav, setActiveNav] = useState<NavKey | null>(null);
+  const { pushRecent } = usePrefs();
 
   // ── Repositories (first-class sidebar entities) ─────────────────────────
   const [repositories, setRepositories] = useState<ConnectedRepository[]>([]);
@@ -134,6 +138,7 @@ export default function DashboardPage() {
 
   function openIntelliWorkspace() {
     setActiveRepoId(null);
+    setActiveNav(null);
     setIntelliOpen(true);
   }
 
@@ -148,7 +153,9 @@ export default function DashboardPage() {
 
   function selectRepo(id: string) {
     setIntelliOpen(false);
+    setActiveNav(null);
     setActiveRepoId(id);
+    pushRecent("repo", id);
   }
 
   /** Persist a connected repo (from the sidebar's connect dialog). */
@@ -722,19 +729,24 @@ export default function DashboardPage() {
     <AppShell
       workspaces={shellWorkspaces}
       activeWorkspaceId={activeWorkspace?.id ?? null}
-      activeSpaceId={activeRepo || intelliOpen ? null : activeSpace?.id ?? null}
+      activeSpaceId={activeRepo || intelliOpen || activeNav ? null : activeSpace?.id ?? null}
       greetingName={firstName}
       fullscreen={fullscreen}
+      activeNav={activeNav}
+      onSelectNav={(nav) => setActiveNav(nav)}
       onSelectWorkspace={(id) => {
         setIntelliOpen(false);
+        setActiveNav(null);
         setActiveRepoId(null);
         setActiveWorkspaceId(id);
         setActiveSpaceId(null);
       }}
       onSelectSpace={(id) => {
         setIntelliOpen(false);
+        setActiveNav(null);
         setActiveRepoId(null);
         setActiveSpaceId(id);
+        pushRecent("space", id);
       }}
       onCreateWorkspace={() => setWorkspaceDialogOpen(true)}
       onCreateSpace={() => setSpaceDialogOpen(true)}
@@ -756,7 +768,13 @@ export default function DashboardPage() {
       user={user}
       onSignOut={handleSignOut}
     >
-      {intelliOpen ? (
+      {activeNav === "recent" ? (
+        <RecentsPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
+      ) : activeNav === "starred" ? (
+        <StarredPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
+      ) : activeNav === "teams" ? (
+        <TeamsPanel workspaces={shellWorkspaces} repositories={repositories} currentUser={user.fullName || user.email} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
+      ) : intelliOpen ? (
         <UnifyIntelliWorkspace />
       ) : activeRepo ? (
         <RepoWorkspace

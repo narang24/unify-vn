@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { Reorder, useDragControls } from "framer-motion";
-import { Plus, GitBranch, FolderGit2, GripVertical } from "lucide-react";
+import { Plus, GitBranch, FolderGit2, GripVertical, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConnectGithubDialog } from "@/components/repo/connect-github-dialog";
 import { useIncidents } from "@/lib/incident-context";
+import { usePrefs } from "@/lib/prefs-context";
 import type { ConnectedRepository } from "@/lib/repo-types";
 
 export function RepoSidebarSection({
@@ -124,6 +125,8 @@ function RepoRow({
     const controls = useDragControls();
     const [armed, setArmed] = React.useState(false);
     const armTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const { isStarred, toggleStar } = usePrefs();
+    const starred = isStarred(repo.id);
 
     return (
         <Reorder.Item value={repo} dragListener={false} dragControls={controls} className="list-none">
@@ -161,6 +164,16 @@ function RepoRow({
                             <span className="h-1.5 w-1.5 rounded-full bg-danger" /> AI
                         </span>
                     )}
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); toggleStar(repo.id); }}
+                    aria-label={starred ? "Unstar repository" : "Star repository"}
+                    className={cn(
+                        "shrink-0 rounded p-1 text-muted hover:text-amber-500",
+                        starred ? "opacity-100 text-amber-500" : "opacity-0 group-hover:opacity-100",
+                    )}
+                >
+                    <Star className={cn("h-3 w-3", starred && "fill-amber-500")} />
                 </button>
             </div>
         </Reorder.Item>

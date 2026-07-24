@@ -25,6 +25,9 @@ export const env = {
 
   // AI incident-agent service (FastAPI in /ai-agent)
   aiAgentUrl: process.env.AI_AGENT_URL ?? "http://localhost:8088",
+
+  // Redis (caching, sessions, prefs). Falls back to in-memory when unset/unreachable.
+  redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   jwtSecret: process.env.JWT_SECRET ?? "dev-only-secret",
   sessionSecret: process.env.SESSION_SECRET ?? "dev-session-secret",
 

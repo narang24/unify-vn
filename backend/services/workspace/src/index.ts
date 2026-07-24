@@ -14,6 +14,8 @@ import { sprintsRouter } from "./routes/sprints.js";
 import { repositoriesRouter } from "./routes/repositories.js";
 import { deploymentsRouter } from "./routes/deployments.js";
 import { incidentsRouter } from "./routes/incidents.js";
+import { githubRouter } from "./routes/github.js";
+import { prefsRouter } from "./routes/prefs.js";
 
 // ─── App Setup ───────────────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ app.use(env.apiPrefix, sprintsRouter);
 app.use(env.apiPrefix, repositoriesRouter);
 app.use(env.apiPrefix, deploymentsRouter);
 app.use(env.apiPrefix, incidentsRouter);
+app.use(env.apiPrefix, githubRouter);
+app.use(env.apiPrefix, prefsRouter);
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 
