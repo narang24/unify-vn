@@ -1,0 +1,12 @@
+incident,category
+API returning 500 after latest release,API Failure
+User login failing due to invalid JWT,Authentication Failure
+Database connection refused,Database Failure
+Redis cache server not responding,Cache Failure
+Pod enters CrashLoopBackOff after deployment,Kubernetes Failure
+Docker image pull failed during deployment,Deployment Failure
+CPU utilization reached 99 percent,Performance Issue
+NGINX returning 504 Gateway Timeout,Infrastructure Failure
+CI pipeline failed because tests failed,CI/CD Failure
+DNS lookup failed for backend service,Network Failure
+SSL certificate expired yesterday,Security Issue

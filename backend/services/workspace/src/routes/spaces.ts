@@ -8,7 +8,8 @@ export const spacesRouter = Router();
 
 spacesRouter.use(requireAuth);
 
-const VALID_KINDS = new Set(["kanban", "scrum"]);
+const VALID_KINDS = new Set(["kanban", "scrum", "bugtracker", "custom"]);
+type SpaceKind = "kanban" | "scrum" | "bugtracker" | "custom";
 
 // POST /api/v1/workspaces/:id/spaces — create a space inside a workspace
 spacesRouter.post("/workspaces/:id/spaces", async (req: AuthedRequest, res) => {
@@ -22,7 +23,7 @@ spacesRouter.post("/workspaces/:id/spaces", async (req: AuthedRequest, res) => {
     const { name, kind } = req.body as { name?: string; kind?: string };
     if (!name?.trim()) return res.status(400).json({ error: "Name is required" });
 
-    const resolvedKind = VALID_KINDS.has(kind ?? "") ? (kind as "kanban" | "scrum") : "kanban";
+    const resolvedKind = VALID_KINDS.has(kind ?? "") ? (kind as SpaceKind) : "kanban";
 
     const [created] = await db
       .insert(spaces)
@@ -32,6 +33,24 @@ spacesRouter.post("/workspaces/:id/spaces", async (req: AuthedRequest, res) => {
     res.status(201).json({ space: created });
   } catch (err) {
     console.error("[spaces.create]", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/v1/workspaces/:id/spaces/reorder — persist sidebar order
+spacesRouter.post("/workspaces/:id/spaces/reorder", async (req: AuthedRequest, res) => {
+  try {
+    const { orderedIds } = req.body as { orderedIds?: string[] };
+    if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds is required" });
+
+    await Promise.all(
+      orderedIds.map((id, index) =>
+        db.update(spaces).set({ orderIndex: index, updatedAt: new Date() }).where(eq(spaces.id, id)),
+      ),
+    );
+    res.json({ message: "Reordered" });
+  } catch (err) {
+    console.error("[spaces.reorder]", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -64,14 +83,25 @@ spacesRouter.get("/spaces/:id", async (req: AuthedRequest, res) => {
   }
 });
 
-// PATCH /api/v1/spaces/:id — update space name/kind
+// PATCH /api/v1/spaces/:id — update space name/kind/columns/pinned/repository
 spacesRouter.patch("/spaces/:id", async (req: AuthedRequest, res) => {
   try {
-    const { name, kind } = req.body as { name?: string; kind?: string };
+    const { name, kind, columns, pinned, repositoryId, orderIndex } = req.body as {
+      name?: string;
+      kind?: string;
+      columns?: { id: string; label: string }[];
+      pinned?: boolean;
+      repositoryId?: string | null;
+      orderIndex?: number;
+    };
     const updates: Record<string, unknown> = { updatedAt: new Date() };
 
     if (name?.trim()) updates.name = name.trim();
     if (kind && VALID_KINDS.has(kind)) updates.kind = kind;
+    if (Array.isArray(columns)) updates.columns = columns;
+    if (typeof pinned === "boolean") updates.pinned = pinned;
+    if (repositoryId !== undefined) updates.repositoryId = repositoryId;
+    if (typeof orderIndex === "number") updates.orderIndex = orderIndex;
 
     const [updated] = await db
       .update(spaces)
@@ -83,6 +113,29 @@ spacesRouter.patch("/spaces/:id", async (req: AuthedRequest, res) => {
     res.json({ space: updated });
   } catch (err) {
     console.error("[spaces.update]", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/v1/spaces/:id/columns — add a custom status column
+spacesRouter.post("/spaces/:id/columns", async (req: AuthedRequest, res) => {
+  try {
+    const { label } = req.body as { label?: string };
+    if (!label?.trim()) return res.status(400).json({ error: "Label is required" });
+
+    const [space] = await db.select().from(spaces).where(eq(spaces.id, req.params.id as string));
+    if (!space) return res.status(404).json({ error: "Space not found" });
+
+    const columns = [...(space.columns ?? []), { id: `col_${Date.now()}`, label: label.trim() }];
+    const [updated] = await db
+      .update(spaces)
+      .set({ columns, updatedAt: new Date() })
+      .where(eq(spaces.id, req.params.id as string))
+      .returning();
+
+    res.json({ space: updated });
+  } catch (err) {
+    console.error("[spaces.addColumn]", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

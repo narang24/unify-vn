@@ -9,7 +9,7 @@ export const workItemsRouter = Router();
 workItemsRouter.use(requireAuth);
 
 const VALID_TYPES = new Set(["epic", "story", "task", "subtask", "bug"]);
-const VALID_STATUSES = new Set(["todo", "inprogress", "inreview", "done"]);
+type Attachment = { id: string; name: string; meta?: string };
 
 // POST /api/v1/spaces/:id/work_items — create a work item in a space
 workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) => {
@@ -19,6 +19,11 @@ workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) =
       title,
       type,
       status,
+      description,
+      label,
+      assignee,
+      epicId,
+      attachments,
       dueDate,
       parentId,
       sprintId,
@@ -27,6 +32,11 @@ workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) =
       title?: string;
       type?: string;
       status?: string;
+      description?: string;
+      label?: string;
+      assignee?: string;
+      epicId?: string;
+      attachments?: Attachment[];
       dueDate?: string;
       parentId?: string;
       sprintId?: string;
@@ -36,9 +46,9 @@ workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) =
     if (!title?.trim()) return res.status(400).json({ error: "Title is required" });
 
     const resolvedType = VALID_TYPES.has(type ?? "") ? (type as "epic" | "story" | "task" | "subtask" | "bug") : "task";
-    const resolvedStatus = VALID_STATUSES.has(status ?? "") ? status! : "todo";
+    // Status may be any of the space's column ids (including custom ones).
+    const resolvedStatus = status?.trim() || "todo";
 
-    // Subtasks must belong to a parent work item
     if (resolvedType === "subtask" && !parentId) {
       return res.status(400).json({ error: "Subtasks require a parentId" });
     }
@@ -49,6 +59,11 @@ workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) =
         title: title.trim(),
         type: resolvedType,
         status: resolvedStatus,
+        description: description?.trim() || null,
+        label: label?.trim() || null,
+        assignee: assignee?.trim() || null,
+        epicId: epicId ?? null,
+        attachments: Array.isArray(attachments) ? attachments : [],
         spaceId,
         parentId: parentId ?? null,
         sprintId: sprintId ?? null,
@@ -99,6 +114,12 @@ workItemsRouter.patch("/work_items/:id", async (req: AuthedRequest, res) => {
     const updates = req.body as {
       title?: string;
       status?: string;
+      type?: string;
+      description?: string | null;
+      label?: string | null;
+      assignee?: string | null;
+      epicId?: string | null;
+      attachments?: Attachment[];
       assigneeId?: string | null;
       dueDate?: string | null;
       sprintId?: string | null;
@@ -109,7 +130,13 @@ workItemsRouter.patch("/work_items/:id", async (req: AuthedRequest, res) => {
     const set: Record<string, unknown> = { updatedAt: new Date() };
 
     if (updates.title?.trim()) set.title = updates.title.trim();
-    if (updates.status && VALID_STATUSES.has(updates.status)) set.status = updates.status;
+    if (updates.status?.trim()) set.status = updates.status.trim();
+    if (updates.type && VALID_TYPES.has(updates.type)) set.type = updates.type;
+    if (updates.description !== undefined) set.description = updates.description;
+    if (updates.label !== undefined) set.label = updates.label;
+    if (updates.assignee !== undefined) set.assignee = updates.assignee;
+    if (updates.epicId !== undefined) set.epicId = updates.epicId;
+    if (Array.isArray(updates.attachments)) set.attachments = updates.attachments;
     if (updates.assigneeId !== undefined) set.assigneeId = updates.assigneeId;
     if (updates.dueDate !== undefined) set.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
     if (updates.sprintId !== undefined) set.sprintId = updates.sprintId;

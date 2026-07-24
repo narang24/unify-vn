@@ -1,0 +1,25 @@
+incident,category
+API returning HTTP 500 after deployment,API Failure
+Login endpoint returns unauthorized for valid users,Authentication Failure
+JWT token validation failed,Authentication Failure
+Database connection timeout,Database Failure
+PostgreSQL refused connection,Database Failure
+Redis server unavailable,Cache Failure
+Cache miss rate increased drastically,Cache Failure
+Kubernetes pod CrashLoopBackOff,Kubernetes Failure
+Pod stuck in Pending state,Kubernetes Failure
+Deployment failed due to image pull error,Deployment Failure
+Application crashes immediately after deployment,Deployment Failure
+High CPU usage on backend server,Performance Issue
+API latency above 5 seconds,Performance Issue
+Memory usage exceeded 95 percent,Performance Issue
+NGINX returning 502 Bad Gateway,Infrastructure Failure
+Load balancer unhealthy,Infrastructure Failure
+Disk space completely exhausted,Infrastructure Failure
+GitHub Actions pipeline failed,CI/CD Failure
+Docker build failed because image not found,CI/CD Failure
+Unit tests failed during CI,CI/CD Failure
+Service cannot resolve DNS names,Network Failure
+Frequent connection resets observed,Network Failure
+TLS certificate expired,Security Issue
+Unauthorized access attempt detected,Security Issue

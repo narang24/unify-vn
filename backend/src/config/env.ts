@@ -22,6 +22,9 @@ export const env = {
   frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:3000",
   apiPrefix: process.env.API_PREFIX ?? "/api/v1",
   databaseUrl: process.env.DATABASE_URL ?? "postgresql://unify:unify_dev_pass@localhost:5432/unify_dev",
+
+  // AI incident-agent service (FastAPI in /ai-agent)
+  aiAgentUrl: process.env.AI_AGENT_URL ?? "http://localhost:8088",
   jwtSecret: process.env.JWT_SECRET ?? "dev-only-secret",
   sessionSecret: process.env.SESSION_SECRET ?? "dev-session-secret",
 

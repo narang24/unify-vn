@@ -11,6 +11,9 @@ import { workspacesRouter } from "./routes/workspaces.js";
 import { spacesRouter } from "./routes/spaces.js";
 import { workItemsRouter } from "./routes/workItems.js";
 import { sprintsRouter } from "./routes/sprints.js";
+import { repositoriesRouter } from "./routes/repositories.js";
+import { deploymentsRouter } from "./routes/deployments.js";
+import { incidentsRouter } from "./routes/incidents.js";
 
 // ─── App Setup ───────────────────────────────────────────────────────────────
 
@@ -47,6 +50,9 @@ app.use(env.apiPrefix, workspacesRouter);
 app.use(env.apiPrefix, spacesRouter);
 app.use(env.apiPrefix, workItemsRouter);
 app.use(env.apiPrefix, sprintsRouter);
+app.use(env.apiPrefix, repositoriesRouter);
+app.use(env.apiPrefix, deploymentsRouter);
+app.use(env.apiPrefix, incidentsRouter);
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 

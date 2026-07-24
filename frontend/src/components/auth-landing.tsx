@@ -11,12 +11,14 @@ import { AppShell, type ShellWorkspace } from "@/components/app-shell";
 import { SpaceTopbar } from "@/components/space-topbar";
 import { RepoWorkspace } from "@/components/repo/repo-workspace";
 import { UnifyIntelliWorkspace } from "@/components/unify-intelli/unify-intelli-workspace";
+import { IncidentProvider } from "@/lib/incident-context";
 import { CreateWorkspaceDialog } from "@/components/create-workspace-dialog";
 import { CreateSpaceDialog } from "@/components/create-space-dialog";
 import { WorkItemDialog, type WorkItemPayload } from "@/components/create-work-item-dialog";
 import { DEFAULT_COLUMNS, type BoardColumn, type BoardKind, type SpaceWorkItem, type WorkItemType } from "@/lib/work-item-types";
 import type { ConnectedRepository } from "@/lib/repo-types";
-import { SEED_REPOSITORIES } from "@/lib/repo-types";
+import * as api from "@/lib/api";
+import type { ApiSpace, ApiWorkItem, ApiRepository } from "@/lib/api";
 
 type WorkItem = SpaceWorkItem;
 
@@ -35,9 +37,6 @@ type Workspace = {
   name: string;
   spaces: Space[];
 };
-
-const STORAGE_KEY = "unify.workspaces.v3";
-const REPO_STORAGE_KEY = "unify.repositories.v1";
 
 function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
@@ -58,6 +57,44 @@ function seededWorkspace(): Workspace {
         ],
       },
     ],
+  };
+}
+
+// ─── Mappers: backend (real) → local view models ─────────────────────────────
+function mapApiSpace(s: ApiSpace): Space {
+  return {
+    id: s.id,
+    name: s.name,
+    kind: s.kind,
+    columns: s.columns?.length ? s.columns : DEFAULT_COLUMNS.map((c) => ({ ...c })),
+    workItems: [],
+    pinned: s.pinned,
+    repoId: s.repositoryId,
+  };
+}
+function mapApiWorkItem(w: ApiWorkItem): WorkItem {
+  return {
+    id: w.id,
+    title: w.title,
+    type: w.type,
+    status: w.status,
+    assignee: w.assignee,
+    dueDate: w.dueDate,
+    description: w.description,
+    label: w.label,
+    epicId: w.epicId,
+    attachments: w.attachments ?? [],
+  };
+}
+function mapApiRepo(r: ApiRepository): ConnectedRepository {
+  return {
+    id: r.id,
+    name: r.name,
+    fullName: r.fullName,
+    provider: r.provider,
+    defaultBranch: r.defaultBranch,
+    connectedAt: "recently",
+    avatarColor: r.avatarColor,
   };
 }
 
@@ -100,48 +137,70 @@ export default function DashboardPage() {
     setIntelliOpen(true);
   }
 
+  // Load real repositories for the active workspace.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(REPO_STORAGE_KEY);
-      setRepositories(raw ? JSON.parse(raw) : SEED_REPOSITORIES);
-    } catch {
-      setRepositories(SEED_REPOSITORIES);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(REPO_STORAGE_KEY, JSON.stringify(repositories));
-    } catch {
-      /* ignore quota errors */
-    }
-  }, [repositories]);
+    if (!activeWorkspaceId) return;
+    api
+      .listRepositories(activeWorkspaceId)
+      .then((list) => setRepositories(list.map(mapApiRepo)))
+      .catch(() => setRepositories([]));
+  }, [activeWorkspaceId]);
 
   function selectRepo(id: string) {
     setIntelliOpen(false);
     setActiveRepoId(id);
   }
 
-  function connectRepo(repo: ConnectedRepository) {
+  /** Persist a connected repo (from the sidebar's connect dialog). */
+  async function connectRepo(repo: ConnectedRepository) {
     setIntelliOpen(false);
-    setRepositories((r) => (r.find((x) => x.id === repo.id) ? r : [repo, ...r]));
-    setActiveRepoId(repo.id);
-    toast({ title: "Repository connected", description: repo.fullName, variant: "success" });
+    if (!activeWorkspaceId) return;
+    try {
+      const created = await api.createRepository(activeWorkspaceId, {
+        name: repo.name,
+        fullName: repo.fullName,
+        provider: repo.provider,
+        defaultBranch: repo.defaultBranch,
+        avatarColor: repo.avatarColor,
+      });
+      const mapped = mapApiRepo(created);
+      setRepositories((r) => [mapped, ...r.filter((x) => x.id !== mapped.id)]);
+      setActiveRepoId(mapped.id);
+      toast({ title: "Repository connected", description: mapped.fullName, variant: "success" });
+    } catch {
+      // offline fallback: keep it local
+      setRepositories((r) => (r.find((x) => x.id === repo.id) ? r : [repo, ...r]));
+      setActiveRepoId(repo.id);
+      toast({ title: "Repository connected", description: repo.fullName, variant: "success" });
+    }
   }
 
   /** Connect a repo *to the active space* (from the space topbar). */
-  function connectRepoToSpace(repo: ConnectedRepository) {
-    setRepositories((r) => (r.find((x) => x.id === repo.id) ? r : [repo, ...r]));
-    if (activeWorkspaceId && activeSpaceId) {
+  async function connectRepoToSpace(repo: ConnectedRepository) {
+    if (!activeWorkspaceId || !activeSpaceId) return;
+    try {
+      const created = await api.createRepository(activeWorkspaceId, {
+        name: repo.name,
+        fullName: repo.fullName,
+        provider: repo.provider,
+        defaultBranch: repo.defaultBranch,
+        avatarColor: repo.avatarColor,
+      });
+      const mapped = mapApiRepo(created);
+      setRepositories((r) => [mapped, ...r.filter((x) => x.id !== mapped.id)]);
+      await api.updateSpace(activeSpaceId, { repositoryId: mapped.id }).catch(() => {});
       setWorkspaces((all) =>
         all.map((ws) =>
           ws.id !== activeWorkspaceId
             ? ws
-            : { ...ws, spaces: ws.spaces.map((sp) => (sp.id === activeSpaceId ? { ...sp, repoId: repo.id } : sp)) },
+            : { ...ws, spaces: ws.spaces.map((sp) => (sp.id === activeSpaceId ? { ...sp, repoId: mapped.id } : sp)) },
         ),
       );
+      toast({ title: "Repository connected", description: mapped.fullName, variant: "success" });
+    } catch {
+      setRepositories((r) => (r.find((x) => x.id === repo.id) ? r : [repo, ...r]));
+      toast({ title: "Repository connected", description: repo.fullName, variant: "success" });
     }
-    toast({ title: "Repository connected", description: repo.fullName, variant: "success" });
   }
 
   const activeRepo = repositories.find((r) => r.id === activeRepoId) ?? null;
@@ -165,46 +224,74 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  // ── Load workspaces (API first, local fallback) ────────────────────────
+  // ── Load workspaces (real data; offline fallback only) ──────────────────
   const loadWorkspaces = useCallback(async () => {
+    if (!getToken()) return;
     try {
-      const res = await fetchWithAuth(`${apiBase}/api/v1/workspaces`);
-      if (!res.ok) throw new Error("failed");
-      const data = await res.json();
-      const list: Workspace[] = (data.workspaces ?? []).map((w: { id: string; name: string }) => ({
-        id: w.id,
-        name: w.name,
-        spaces: [],
-      }));
-      if (list.length === 0) throw new Error("empty");
-      setWorkspaces(list);
+      let list = await api.listWorkspaces();
+      if (list.length === 0) {
+        // First run → create a real Default Workspace + Kanban space.
+        const ws = await api.createWorkspace("Default Workspace");
+        await api.createSpace(ws.id, { name: "My Kanban Space", kind: "kanban" }).catch(() => {});
+        list = [ws];
+      }
+      setWorkspaces(list.map((w) => ({ id: w.id, name: w.name, spaces: [] })));
       setActiveWorkspaceId((prev) => prev ?? list[0].id);
     } catch {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const parsed: Workspace[] = raw ? JSON.parse(raw) : [seededWorkspace()];
-        setWorkspaces(parsed);
-        setActiveWorkspaceId((prev) => prev ?? parsed[0]?.id ?? null);
-      } catch {
-        const seeded = [seededWorkspace()];
-        setWorkspaces(seeded);
-        setActiveWorkspaceId(seeded[0].id);
-      }
+      const seeded = [seededWorkspace()];
+      setWorkspaces(seeded);
+      setActiveWorkspaceId((prev) => prev ?? seeded[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    loadWorkspaces();
-  }, [loadWorkspaces]);
+    if (user) loadWorkspaces();
+  }, [user, loadWorkspaces]);
 
+  // Fetch real spaces for the active workspace.
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(workspaces));
-    } catch {
-      /* ignore quota errors */
-    }
-  }, [workspaces]);
+    if (!activeWorkspaceId) return;
+    api
+      .listSpaces(activeWorkspaceId)
+      .then((spaces) => {
+        const mapped = spaces
+          .slice()
+          .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+          .map(mapApiSpace);
+        setWorkspaces((all) =>
+          all.map((ws) =>
+            ws.id !== activeWorkspaceId
+              ? ws
+              : {
+                  ...ws,
+                  spaces: mapped.map((sp) => {
+                    const prev = ws.spaces.find((e) => e.id === sp.id);
+                    return prev ? { ...sp, workItems: prev.workItems } : sp;
+                  }),
+                },
+          ),
+        );
+      })
+      .catch(() => {});
+  }, [activeWorkspaceId]);
+
+  // Fetch real work items for the active space.
+  useEffect(() => {
+    if (!activeSpaceId) return;
+    api
+      .listWorkItems(activeSpaceId)
+      .then((items) => {
+        const mapped = items.map(mapApiWorkItem);
+        setWorkspaces((all) =>
+          all.map((ws) => ({
+            ...ws,
+            spaces: ws.spaces.map((sp) => (sp.id === activeSpaceId ? { ...sp, workItems: mapped } : sp)),
+          })),
+        );
+      })
+      .catch(() => {});
+  }, [activeSpaceId]);
 
   useEffect(() => {
     const ws = workspaces.find((w) => w.id === activeWorkspaceId);
@@ -216,40 +303,43 @@ export default function DashboardPage() {
   const activeSpaceRepo = activeSpace?.repoId ? repositories.find((r) => r.id === activeSpace.repoId) ?? null : null;
 
   // ── Mutations (optimistic, local-first) ─────────────────────────────────
-  function createWorkspace(name: string) {
-    const ws: Workspace = { id: uid("ws"), name, spaces: [] };
-    setWorkspaces((s) => [ws, ...s]);
-    setActiveWorkspaceId(ws.id);
-    setActiveSpaceId(null);
-    setActiveRepoId(null);
-    toast({ title: "Workspace created", description: name, variant: "success" });
-
-    fetchWithAuth(`${apiBase}/api/v1/workspaces`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    }).catch(() => { });
-  }
-
-  function createSpace(name: string, kind: BoardKind) {
-    if (!activeWorkspaceId) return;
-    const sp: Space = { id: uid("sp"), name, kind, columns: DEFAULT_COLUMNS.map((c) => ({ ...c })), workItems: [] };
-    setWorkspaces((all) =>
-      all.map((ws) => (ws.id === activeWorkspaceId ? { ...ws, spaces: [sp, ...ws.spaces] } : ws)),
-    );
-    setActiveSpaceId(sp.id);
+  async function createWorkspace(name: string) {
     setActiveRepoId(null);
     setIntelliOpen(false);
-    toast({ title: "Space created", description: `${name} · ${kind}`, variant: "success" });
-
-    fetchWithAuth(`${apiBase}/api/v1/workspaces/${activeWorkspaceId}/spaces`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, kind }),
-    }).catch(() => { });
+    try {
+      const ws = await api.createWorkspace(name);
+      setWorkspaces((s) => [{ id: ws.id, name: ws.name, spaces: [] }, ...s]);
+      setActiveWorkspaceId(ws.id);
+      setActiveSpaceId(null);
+      toast({ title: "Workspace created", description: name, variant: "success" });
+    } catch {
+      const ws: Workspace = { id: uid("ws"), name, spaces: [] };
+      setWorkspaces((s) => [ws, ...s]);
+      setActiveWorkspaceId(ws.id);
+      setActiveSpaceId(null);
+      toast({ title: "Workspace created", description: name, variant: "success" });
+    }
   }
 
-  function upsertWorkItem(payload: WorkItemPayload) {
+  async function createSpace(name: string, kind: BoardKind) {
+    if (!activeWorkspaceId) return;
+    setActiveRepoId(null);
+    setIntelliOpen(false);
+    try {
+      const created = await api.createSpace(activeWorkspaceId, { name, kind });
+      const sp = mapApiSpace(created);
+      setWorkspaces((all) => all.map((ws) => (ws.id === activeWorkspaceId ? { ...ws, spaces: [sp, ...ws.spaces] } : ws)));
+      setActiveSpaceId(sp.id);
+      toast({ title: "Space created", description: `${name} · ${kind}`, variant: "success" });
+    } catch {
+      const sp: Space = { id: uid("sp"), name, kind, columns: DEFAULT_COLUMNS.map((c) => ({ ...c })), workItems: [] };
+      setWorkspaces((all) => all.map((ws) => (ws.id === activeWorkspaceId ? { ...ws, spaces: [sp, ...ws.spaces] } : ws)));
+      setActiveSpaceId(sp.id);
+      toast({ title: "Space created", description: `${name} · ${kind}`, variant: "success" });
+    }
+  }
+
+  async function upsertWorkItem(payload: WorkItemPayload) {
     if (!activeWorkspaceId || !activeSpaceId) return;
 
     // Editing an existing item
@@ -264,34 +354,32 @@ export default function DashboardPage() {
         })),
       );
       toast({ title: "Work item updated", description: payload.title, variant: "success" });
-      fetchWithAuth(`${apiBase}/api/v1/work_items/${payload.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch(() => { });
+      api.updateWorkItem(payload.id, payload as Partial<ApiWorkItem>).catch(() => {});
       return;
     }
 
-    const item: WorkItem = { id: uid("wi"), status: itemTargetStatus, ...payload };
-    setWorkspaces((all) =>
-      all.map((ws) =>
-        ws.id !== activeWorkspaceId
-          ? ws
-          : {
-            ...ws,
-            spaces: ws.spaces.map((sp) =>
-              sp.id !== activeSpaceId ? sp : { ...sp, workItems: [item, ...sp.workItems] },
-            ),
-          },
-      ),
-    );
+    const body = { ...payload, status: itemTargetStatus };
+    try {
+      const created = await api.createWorkItem(activeSpaceId, body as Partial<ApiWorkItem>);
+      const item = mapApiWorkItem(created);
+      setWorkspaces((all) =>
+        all.map((ws) =>
+          ws.id !== activeWorkspaceId
+            ? ws
+            : { ...ws, spaces: ws.spaces.map((sp) => (sp.id !== activeSpaceId ? sp : { ...sp, workItems: [item, ...sp.workItems] })) },
+        ),
+      );
+    } catch {
+      const item: WorkItem = { id: uid("wi"), status: itemTargetStatus, ...payload };
+      setWorkspaces((all) =>
+        all.map((ws) =>
+          ws.id !== activeWorkspaceId
+            ? ws
+            : { ...ws, spaces: ws.spaces.map((sp) => (sp.id !== activeSpaceId ? sp : { ...sp, workItems: [item, ...sp.workItems] })) },
+        ),
+      );
+    }
     toast({ title: `${payload.type[0].toUpperCase()}${payload.type.slice(1)} created`, description: payload.title, variant: "success" });
-
-    fetchWithAuth(`${apiBase}/api/v1/spaces/${activeSpaceId}/work_items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(item),
-    }).catch(() => { });
   }
 
   function deleteWorkItem(id: string) {
@@ -302,17 +390,23 @@ export default function DashboardPage() {
       })),
     );
     toast({ title: "Work item deleted", variant: "success" });
-    fetchWithAuth(`${apiBase}/api/v1/work_items/${id}`, { method: "DELETE" }).catch(() => { });
+    api.deleteWorkItem(id).catch(() => {});
   }
 
-  function createWorkItemFromRepo(title: string, type: WorkItemType, attachments?: { id: string; name: string; meta?: string }[]) {
+  async function createWorkItemFromRepo(title: string, type: WorkItemType, attachments?: { id: string; name: string; meta?: string }[]) {
     const targetSpaceId = activeSpaceId ?? activeWorkspace?.spaces[0]?.id;
     const targetWorkspaceId = activeWorkspaceId ?? workspaces[0]?.id;
     if (!targetSpaceId || !targetWorkspaceId) {
       toast({ title: "Create a space first", description: "Work items need a space to live in.", variant: "error" });
       return;
     }
-    const item: WorkItem = { id: uid("wi"), title, type, status: "todo", attachments };
+    let item: WorkItem = { id: uid("wi"), title, type, status: "todo", attachments };
+    try {
+      const created = await api.createWorkItem(targetSpaceId, { title, type, status: "todo", attachments });
+      item = mapApiWorkItem(created);
+    } catch {
+      /* keep local */
+    }
     setWorkspaces((all) =>
       all.map((ws) =>
         ws.id !== targetWorkspaceId
@@ -333,38 +427,52 @@ export default function DashboardPage() {
         })),
       })),
     );
-    fetchWithAuth(`${apiBase}/api/v1/work_items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: toStatus }),
-    }).catch(() => { });
+    api.updateWorkItem(itemId, { status: toStatus }).catch(() => {});
   }
 
-  function addColumn(label: string) {
+  async function addColumn(label: string) {
     if (!activeWorkspaceId || !activeSpaceId) return;
-    const col: BoardColumn = { id: uid("col"), label };
-    setWorkspaces((all) =>
-      all.map((ws) => ({
-        ...ws,
-        spaces: ws.spaces.map((sp) => (sp.id === activeSpaceId ? { ...sp, columns: [...(sp.columns ?? DEFAULT_COLUMNS), col] } : sp)),
-      })),
-    );
+    const spaceId = activeSpaceId;
+    try {
+      const updated = await api.addSpaceColumn(spaceId, label);
+      setWorkspaces((all) =>
+        all.map((ws) => ({
+          ...ws,
+          spaces: ws.spaces.map((sp) => (sp.id === spaceId ? { ...sp, columns: updated.columns } : sp)),
+        })),
+      );
+    } catch {
+      const col: BoardColumn = { id: uid("col"), label };
+      setWorkspaces((all) =>
+        all.map((ws) => ({
+          ...ws,
+          spaces: ws.spaces.map((sp) => (sp.id === spaceId ? { ...sp, columns: [...(sp.columns ?? DEFAULT_COLUMNS), col] } : sp)),
+        })),
+      );
+    }
     toast({ title: "Status added", description: label, variant: "success" });
   }
 
   function togglePinSpace(spaceId: string) {
+    let nextPinned = false;
     setWorkspaces((all) =>
       all.map((ws) => ({
         ...ws,
-        spaces: ws.spaces.map((sp) => (sp.id === spaceId ? { ...sp, pinned: !sp.pinned } : sp)),
+        spaces: ws.spaces.map((sp) => {
+          if (sp.id !== spaceId) return sp;
+          nextPinned = !sp.pinned;
+          return { ...sp, pinned: nextPinned };
+        }),
       })),
     );
+    api.updateSpace(spaceId, { pinned: nextPinned }).catch(() => {});
   }
 
   function deleteSpace(spaceId: string) {
     setWorkspaces((all) => all.map((ws) => ({ ...ws, spaces: ws.spaces.filter((sp) => sp.id !== spaceId) })));
     if (activeSpaceId === spaceId) setActiveSpaceId(null);
     toast({ title: "Space deleted", variant: "success" });
+    api.deleteSpace(spaceId).catch(() => {});
   }
 
   // ── Reordering (drag-and-drop from the sidebar) ─────────────────────────
@@ -375,9 +483,11 @@ export default function DashboardPage() {
     setWorkspaces((all) =>
       all.map((ws) => (ws.id === workspaceId ? { ...ws, spaces: ids.map((id) => ws.spaces.find((s) => s.id === id)!).filter(Boolean) } : ws)),
     );
+    api.reorderSpaces(workspaceId, ids).catch(() => {});
   }
   function reorderRepos(ids: string[]) {
     setRepositories((all) => ids.map((id) => all.find((r) => r.id === id)!).filter(Boolean));
+    if (activeWorkspaceId) api.reorderRepositories(activeWorkspaceId, ids).catch(() => {});
   }
 
   async function handleEmailAuth(e: React.FormEvent) {
@@ -405,16 +515,7 @@ export default function DashboardPage() {
       setToken(data.accessToken);
       setUser(data.user);
       setAuthModalOpen(false);
-      // First sign-up → ensure a Default Workspace exists and land in the shell.
-      if (authTab === "signup") {
-        setWorkspaces((prev) => {
-          if (prev.length > 0) return prev;
-          const seeded = seededWorkspace();
-          setActiveWorkspaceId(seeded.id);
-          setActiveSpaceId(seeded.spaces[0].id);
-          return [seeded];
-        });
-      }
+      // The workspace loader creates a real Default Workspace on first sign-in.
     } catch {
       setAuthError("Network error. Please check your connection.");
     } finally {
@@ -617,6 +718,7 @@ export default function DashboardPage() {
   const firstName = (user.fullName || user.email).split(/[ @]/)[0];
 
   return (
+    <IncidentProvider repositories={repositories}>
     <AppShell
       workspaces={shellWorkspaces}
       activeWorkspaceId={activeWorkspace?.id ?? null}
@@ -733,6 +835,7 @@ export default function DashboardPage() {
         defaultDueDate={itemDefaultDue}
       />
     </AppShell>
+    </IncidentProvider>
   );
 }
 

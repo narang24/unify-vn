@@ -5,6 +5,7 @@ import { Reorder, useDragControls } from "framer-motion";
 import { Plus, GitBranch, FolderGit2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConnectGithubDialog } from "@/components/repo/connect-github-dialog";
+import { useIncidents } from "@/lib/incident-context";
 import type { ConnectedRepository } from "@/lib/repo-types";
 
 export function RepoSidebarSection({
@@ -25,6 +26,7 @@ export function RepoSidebarSection({
     collapsed: boolean;
 }) {
     const [dialogOpen, setDialogOpen] = React.useState(false);
+    const incidents = useIncidents();
 
     return (
         <div className="mb-1">
@@ -48,12 +50,15 @@ export function RepoSidebarSection({
                             key={repo.id}
                             onClick={() => onSelectRepo(repo.id)}
                             className={cn(
-                                "flex w-full items-center justify-center rounded-lg py-1.5",
+                                "relative flex w-full items-center justify-center rounded-lg py-1.5",
                                 repo.id === activeRepoId ? "bg-accent/10 text-accent" : "text-foreground hover:bg-foreground/[0.06]",
                             )}
                             title={repo.fullName}
                         >
                             <RepoGlyph repo={repo} />
+                            {incidents.hasNewRecommendation(repo.id) && (
+                                <span className="absolute right-2 top-1 h-1.5 w-1.5 rounded-full bg-danger ring-2 ring-panel" />
+                            )}
                         </button>
                     ))}
                 </div>
@@ -69,6 +74,7 @@ export function RepoSidebarSection({
                             key={repo.id}
                             repo={repo}
                             active={repo.id === activeRepoId}
+                            hasRecommendation={incidents.hasNewRecommendation(repo.id)}
                             onSelect={() => onSelectRepo(repo.id)}
                             onDragStart={() => onDragStateChange?.(true)}
                             onDragEnd={() => onDragStateChange?.(false)}
@@ -103,12 +109,14 @@ function RepoGlyph({ repo }: { repo: ConnectedRepository }) {
 function RepoRow({
     repo,
     active,
+    hasRecommendation,
     onSelect,
     onDragStart,
     onDragEnd,
 }: {
     repo: ConnectedRepository;
     active: boolean;
+    hasRecommendation?: boolean;
     onSelect: () => void;
     onDragStart: () => void;
     onDragEnd: () => void;
@@ -148,6 +156,11 @@ function RepoRow({
                 >
                     <RepoGlyph repo={repo} />
                     <span className="truncate">{repo.name}</span>
+                    {hasRecommendation && (
+                        <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-danger/12 px-1.5 py-0.5 text-[9.5px] font-semibold text-danger">
+                            <span className="h-1.5 w-1.5 rounded-full bg-danger" /> AI
+                        </span>
+                    )}
                 </button>
             </div>
         </Reorder.Item>

@@ -2,23 +2,25 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Code2, CircleDot, GitPullRequest, Lightbulb, X } from "lucide-react";
+import { Code2, CircleDot, GitPullRequest, Rocket, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CodeView } from "@/components/repo/code-view";
 import { IssuesView } from "@/components/repo/issues-view";
 import { PullRequestsView } from "@/components/repo/pull-requests-view";
+import { DeploymentsView } from "@/components/repo/deployments-view";
 import { AiSidebar } from "@/components/repo/ai-sidebar";
 import { SelectionActionBar } from "@/components/repo/selection-action-bar";
 import { WorkItemDialog } from "@/components/create-work-item-dialog";
 import type { ConnectedRepository, ContextChip } from "@/lib/repo-types";
 import type { WorkItemType, WorkItemAttachment } from "@/lib/work-item-types";
 
-type RepoTab = "code" | "issues" | "prs";
+type RepoTab = "code" | "issues" | "prs" | "deployments";
 
 const TABS: { id: RepoTab; label: string; icon: typeof Code2 }[] = [
     { id: "code", label: "Code", icon: Code2 },
     { id: "issues", label: "Issues", icon: CircleDot },
     { id: "prs", label: "Pull Requests", icon: GitPullRequest },
+    { id: "deployments", label: "Deployments", icon: Rocket },
 ];
 
 export function RepoWorkspace({
@@ -179,6 +181,22 @@ export function RepoWorkspace({
                             )}
                             {activeTab === "prs" && (
                                 <PullRequestsView selectMode={selectMode} selectedChips={contextChips} onAddChip={addChip} onRemoveChip={removeChip} />
+                            )}
+                            {activeTab === "deployments" && (
+                                <DeploymentsView
+                                    repo={repo}
+                                    onAskIntelli={(rca) => {
+                                        if (rca) {
+                                            addChip({
+                                                id: `ctx_rca_${rca.deploymentId}`,
+                                                type: "code",
+                                                label: `RCA: ${rca.classification.category}`,
+                                                meta: `${rca.rootCause}\n\nRecommended fix:\n${rca.recommendedFix}`,
+                                            });
+                                        }
+                                        setAiOpen(true);
+                                    }}
+                                />
                             )}
                         </motion.div>
                     </AnimatePresence>
