@@ -33,10 +33,12 @@ export function DialogContent({
   className,
   children,
   title,
+  hideCloseButton,
 }: {
   className?: string;
   children: React.ReactNode;
   title?: string;
+  hideCloseButton?: boolean;
 }) {
   const ctx = React.useContext(DialogContext);
   const [mounted, setMounted] = React.useState(false);
@@ -82,13 +84,15 @@ export function DialogContent({
               className,
             )}
           >
-            <button
-              onClick={() => ctx.setOpen(false)}
-              aria-label="Close"
-              className="absolute right-4 top-4 rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            {!hideCloseButton && (
+              <button
+                onClick={() => ctx.setOpen(false)}
+                aria-label="Close"
+                className="absolute right-4 top-4 rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             {children}
           </motion.div>
         </div>
@@ -97,6 +101,7 @@ export function DialogContent({
     document.body,
   );
 }
+
 
 export function DialogHeader({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cn("mb-4 pr-6", className)}>{children}</div>;

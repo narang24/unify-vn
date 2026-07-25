@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { GitPullRequest, GitMerge, XCircle, MessageSquare } from "lucide-react";
 import { SEED_PULL_REQUESTS } from "@/lib/repo-types";
-import type { ContextChip } from "@/lib/repo-types";
+import type { ConnectedRepository, ContextChip } from "@/lib/repo-types";
 
 const STATE_ICON = {
     open: { icon: GitPullRequest, color: "text-emerald-500" },
@@ -12,11 +12,13 @@ const STATE_ICON = {
 };
 
 export function PullRequestsView({
+    repo,
     selectMode,
     selectedChips,
     onAddChip,
     onRemoveChip,
 }: {
+    repo?: ConnectedRepository;
     selectMode: boolean;
     selectedChips: ContextChip[];
     onAddChip: (chip: ContextChip) => void;

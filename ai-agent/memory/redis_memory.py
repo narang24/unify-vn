@@ -5,6 +5,7 @@ Stores:
   * repository memory summaries (parsed structure, frameworks, graphs)
   * historical incident memory (resolved incidents + their fixes)
   * cached tool results / frequently-accessed context
+  * PR templates and contribution guidelines (24-hour TTL)
 
 Redis is optional: if a server isn't reachable (or the `redis` package isn't
 installed) everything transparently falls back to an in-process store, so the
@@ -20,9 +21,14 @@ from typing import Any
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-_KEY_INCIDENTS = "unify:incident:history"
-_KEY_REPO_MEMORY = "unify:repo:memory:"      # + repo id
-_KEY_CACHE = "unify:cache:"                  # + key
+_KEY_INCIDENTS         = "unify:incident:history"
+_KEY_REPO_MEMORY       = "unify:repo:memory:"        # + repo id
+_KEY_CACHE             = "unify:cache:"               # + key
+_KEY_PR_TEMPLATE       = "unify:pr_template:"         # + owner/repo
+_KEY_CONTRIB_GUIDE     = "unify:contribution:"        # + owner/repo
+
+_TTL_PR_TEMPLATE_SECS  = 86_400   # 24 hours
+_TTL_RCA_SECS          = 1_800    # 30 minutes (default RCA cache)
 
 
 def _connect():
@@ -40,9 +46,9 @@ class _InMemory:
     """Minimal Redis-like fallback (get/set/rpush/lrange/expire)."""
 
     def __init__(self) -> None:
-        self.kv: dict[str, Any] = {}
+        self.kv: dict[str, Any]         = {}
         self.lists: dict[str, list[str]] = {}
-        self.expiry: dict[str, float] = {}
+        self.expiry: dict[str, float]    = {}
 
     def _expired(self, key: str) -> bool:
         exp = self.expiry.get(key)
@@ -69,20 +75,41 @@ class _InMemory:
             return items[start:]
         return items[start : end + 1]
 
+    def mget(self, *keys: str):
+        """Batch-get multiple keys (returns None for missing/expired)."""
+        return [self.get(k) for k in keys]
+
 
 class RedisMemory:
     def __init__(self) -> None:
-        self.client = _connect()
-        self.backend = self.client or _InMemory()
+        self.client     = _connect()
+        self.backend    = self.client or _InMemory()
         self.using_redis = self.client is not None
+
+    # ── health ───────────────────────────────────────────────────────────
+    @property
+    def backend_label(self) -> str:
+        return "redis" if self.using_redis else "in-memory"
 
     # ── generic cache ────────────────────────────────────────────────────
     def cache_get(self, key: str):
         raw = self.backend.get(_KEY_CACHE + key)
         return json.loads(raw) if raw else None
 
-    def cache_set(self, key: str, value: Any, ttl_seconds: int = 3600) -> None:
+    def cache_set(self, key: str, value: Any, ttl_seconds: int = _TTL_RCA_SECS) -> None:
         self.backend.set(_KEY_CACHE + key, json.dumps(value), ex=ttl_seconds)
+
+    def cache_get_many(self, keys: list[str]) -> dict[str, Any]:
+        """Batch-get multiple cache entries; missing keys map to None."""
+        prefixed = [_KEY_CACHE + k for k in keys]
+        if self.using_redis:
+            raws = self.client.mget(*prefixed)  # type: ignore[union-attr]
+        else:
+            raws = self.backend.mget(*prefixed)   # type: ignore[attr-defined]
+        return {
+            k: (json.loads(raw) if raw else None)
+            for k, raw in zip(keys, raws)
+        }
 
     # ── repository memory ────────────────────────────────────────────────
     def set_repo_memory(self, repo_id: str, data: dict) -> None:
@@ -91,6 +118,22 @@ class RedisMemory:
     def get_repo_memory(self, repo_id: str) -> dict | None:
         raw = self.backend.get(_KEY_REPO_MEMORY + repo_id)
         return json.loads(raw) if raw else None
+
+    # ── PR template cache ────────────────────────────────────────────────
+    def set_pr_template(self, owner: str, repo: str, text: str) -> None:
+        key = _KEY_PR_TEMPLATE + f"{owner}/{repo}"
+        self.backend.set(key, text, ex=_TTL_PR_TEMPLATE_SECS)
+
+    def get_pr_template(self, owner: str, repo: str) -> str | None:
+        return self.backend.get(_KEY_PR_TEMPLATE + f"{owner}/{repo}")
+
+    # ── contribution guidelines cache ────────────────────────────────────
+    def set_contribution_guidelines(self, owner: str, repo: str, text: str) -> None:
+        key = _KEY_CONTRIB_GUIDE + f"{owner}/{repo}"
+        self.backend.set(key, text, ex=_TTL_PR_TEMPLATE_SECS)
+
+    def get_contribution_guidelines(self, owner: str, repo: str) -> str | None:
+        return self.backend.get(_KEY_CONTRIB_GUIDE + f"{owner}/{repo}")
 
     # ── historical incident memory ───────────────────────────────────────
     def remember_incident(self, incident: dict) -> None:

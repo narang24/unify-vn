@@ -136,6 +136,7 @@ function RepoRow({
                     if (armTimer.current) clearTimeout(armTimer.current);
                     setArmed(false);
                 }}
+                onPointerUp={onDragEnd}
                 className={cn("group flex items-center gap-1 rounded-lg", armed && "drag-armed")}
             >
                 <span
@@ -150,9 +151,8 @@ function RepoRow({
                 </span>
                 <button
                     onClick={onSelect}
-                    onPointerUp={onDragEnd}
                     className={cn(
-                        "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-medium hover:bg-foreground/[0.06]",
+                        "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-semibold hover:bg-foreground/[0.06]",
                         active ? "bg-accent/10 text-accent" : "text-foreground",
                     )}
                     title={repo.fullName}

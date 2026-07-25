@@ -10,6 +10,7 @@ import {
   type RootCauseAnalysis,
   type AgentToolStep,
   type AgentToolName,
+  type PrDraft,
 } from "@/lib/incident-agent";
 import {
   listDeployments,
@@ -17,6 +18,7 @@ import {
   getIncidentForDeployment,
   analyzeDeployment,
   generatePullRequest as apiGeneratePr,
+  draftPullRequest as apiDraftPr,
   markIncidentSeen,
   type ApiDeployment,
   type ApiIncident,
@@ -44,6 +46,7 @@ interface IncidentContextValue {
   reanalyze: (repoId: string, deploymentId: string) => void;
   triggerDeployment: (repoId: string) => void;   // → sync from provider
   generatePullRequest: (repoId: string, deploymentId: string) => void;
+  draftPullRequest: (repoId: string, deploymentId: string) => Promise<PrDraft>;
 }
 
 const IncidentContext = React.createContext<IncidentContextValue | null>(null);
@@ -110,6 +113,11 @@ function mapIncident(inc: ApiIncident): RootCauseAnalysis {
     recommendedFix: inc.suggestedFix ?? "",
     codeSnippet: inc.codeSnippet ?? { filename: "", language: "", code: "" },
     toolSteps: (inc.toolsUsed ?? []).map(prettyTool),
+    investigationWorkflow: (inc.workflow ?? (inc.toolsUsed ?? []).map((t, i) => ({
+      step: i + 1,
+      label: t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      detail: t,
+    }))),
     relatedIncidents: (inc.similarIncidents ?? []).map((s, i) => ({
       id: s.id ?? `inc_${i}`,
       title: s.category ?? s.root_cause ?? "Similar incident",
@@ -325,6 +333,49 @@ export function IncidentProvider({
         toast({ title: "Pull request drafted", description: `#${n} · fix from Unify Intelli`, variant: "success" });
       }
     },
+    draftPullRequest: async (repoId, deploymentId) => {
+      const s = repos[repoId];
+      const incidentId = s?.incidentIds[deploymentId];
+      const analysis = s?.analyses[deploymentId];
+
+      if (s?.live && incidentId && analysis) {
+        try {
+          return await apiDraftPr(incidentId, analysis as unknown as Record<string, unknown>);
+        } catch {
+          // fall through to simulated draft
+        }
+      }
+
+      // Simulated / offline draft
+      const cat = (analysis?.classification?.category ?? "incident").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      return {
+        title: `fix: resolve ${analysis?.classification?.category ?? "incident"} detected by Unify Intelli`,
+        branch: `fix/${cat}`,
+        body: [
+          `## Summary`,
+          ``,
+          `Automated fix drafted by **Unify Intelli** to resolve a **${analysis?.classification?.category ?? "deployment failure"}**.`,
+          ``,
+          `## Root Cause`,
+          ``,
+          analysis?.rootCause ?? "",
+          ``,
+          `## Changes`,
+          ``,
+          analysis?.recommendedFix ?? "",
+          ``,
+          `\`\`\`${analysis?.codeSnippet?.language ?? ""}`,
+          analysis?.codeSnippet?.code ?? "",
+          `\`\`\``,
+          ``,
+          `## Testing`,
+          ``,
+          `- [ ] Verified fix resolves the root cause locally`,
+          `- [ ] CI pipeline passing`,
+          `- [ ] Staging deployment healthy`,
+        ].join("\n"),
+      };
+    },
   };
 
   return <IncidentContext.Provider value={value}>{children}</IncidentContext.Provider>;
@@ -341,6 +392,7 @@ export function useIncidents(): IncidentContextValue {
       reanalyze: () => {},
       triggerDeployment: () => {},
       generatePullRequest: () => {},
+      draftPullRequest: async () => ({ title: "", branch: "", body: "" }),
     };
   }
   return ctx;

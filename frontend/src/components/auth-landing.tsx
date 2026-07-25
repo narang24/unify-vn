@@ -135,11 +135,23 @@ export default function DashboardPage() {
 
   // ── Unify Intelli dedicated AI workspace ────────────────────────────────
   const [intelliOpen, setIntelliOpen] = useState(false);
+  const [intelliContext, setIntelliContext] = useState<WorkItem | null>(null);
+  const [intelliChanges, setIntelliChanges] = useState<WorkItemPayload | null>(null);
 
-  function openIntelliWorkspace() {
+  function openIntelliWorkspace(item?: WorkItem) {
     setActiveRepoId(null);
     setActiveNav(null);
+    setIntelliContext(item || null);
     setIntelliOpen(true);
+  }
+
+  function handleReviewIntelliChanges(payload: WorkItemPayload) {
+    // Return to the board
+    setIntelliOpen(false);
+    setActiveNav(null);
+    
+    // Set the changes for the space topbar to consume, ensure ID is present
+    setIntelliChanges({ ...payload, id: payload.id ?? intelliContext?.id });
   }
 
   // Load real repositories for the active workspace.
@@ -215,6 +227,7 @@ export default function DashboardPage() {
   // ── Auth check ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!getToken()) {
+      setUser({ fullName: "Guest User", email: "guest@unify.dev" });
       setLoading(false);
       return;
     }
@@ -226,6 +239,7 @@ export default function DashboardPage() {
       .then((data) => setUser(data.user))
       .catch(() => {
         clearToken();
+        setUser({ fullName: "Guest User", email: "guest@unify.dev" });
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -233,7 +247,6 @@ export default function DashboardPage() {
 
   // ── Load workspaces (real data; offline fallback only) ──────────────────
   const loadWorkspaces = useCallback(async () => {
-    if (!getToken()) return;
     try {
       let list = await api.listWorkspaces();
       if (list.length === 0) {
@@ -534,6 +547,7 @@ export default function DashboardPage() {
     fetchWithAuth(`${apiBase}/api/v1/auth/signout`, { method: "POST" }).finally(() => {
       clearToken();
       setUser(null);
+      router.push("/");
     });
   }
 
@@ -775,7 +789,10 @@ export default function DashboardPage() {
       ) : activeNav === "teams" ? (
         <TeamsPanel workspaces={shellWorkspaces} repositories={repositories} currentUser={user.fullName || user.email} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
       ) : intelliOpen ? (
-        <UnifyIntelliWorkspace />
+        <UnifyIntelliWorkspace 
+          preloadedContext={intelliContext} 
+          onReviewChanges={handleReviewIntelliChanges} 
+        />
       ) : activeRepo ? (
         <RepoWorkspace
           repo={activeRepo}
@@ -817,10 +834,8 @@ export default function DashboardPage() {
             setItemDefaultDue(dateISO);
             setItemDialogOpen(true);
           }}
-          onEditItem={(item) => {
-            setEditingItem(item);
-            setItemDialogOpen(true);
-          }}
+          onEditItem={(_item, payload) => upsertWorkItem(payload)}
+          onDeleteItem={deleteWorkItem}
           onAddColumn={addColumn}
           onConnectRepo={connectRepoToSpace}
           onViewRepo={(id) => selectRepo(id)}
@@ -832,6 +847,7 @@ export default function DashboardPage() {
             setItemDefaultDue(null);
             setItemDialogOpen(true);
           }}
+          initialAiChanges={intelliChanges}
         />
       )}
 
@@ -848,6 +864,7 @@ export default function DashboardPage() {
         onDelete={deleteWorkItem}
         disabled={!activeSpace}
         spaceName={activeSpace?.name ?? ""}
+        spaces={activeWorkspace?.spaces.map(s => ({ id: s.id, name: s.name })) ?? []}
         epics={activeSpace?.workItems.filter((w) => w.type === "epic") ?? []}
         editing={editingItem}
         defaultDueDate={itemDefaultDue}

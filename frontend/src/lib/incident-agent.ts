@@ -8,6 +8,7 @@
 //      repo structure, execution paths, prior incidents)
 //   3. RAG retrieves relevant repository knowledge
 //   4. a root-cause analysis + suggested fix / code snippet is produced
+//   5. an investigation workflow (ordered steps) is produced for display
 //
 // The category set matches the backend's trained classifier
 // (ml/data/incidents.csv).
@@ -84,6 +85,13 @@ export interface AgentToolStep {
   detail: string;
 }
 
+/** Ordered investigation step shown in the Investigate panel workflow timeline. */
+export interface InvestigationStep {
+  step: number;
+  label: string;
+  detail: string;
+}
+
 export interface RelatedIncident {
   id: string;
   title: string;
@@ -97,6 +105,13 @@ export interface CodeSnippet {
   code: string;
 }
 
+/** PR draft payload returned by the AI agent /pull-request/draft endpoint. */
+export interface PrDraft {
+  title: string;
+  branch: string;
+  body: string;
+}
+
 export interface RootCauseAnalysis {
   deploymentId: string;
   classification: IncidentClassification;
@@ -106,9 +121,14 @@ export interface RootCauseAnalysis {
   recommendedFix: string;
   codeSnippet: CodeSnippet;
   toolSteps: AgentToolStep[];
+  /** Ordered workflow steps the agent took to reach this RCA. */
+  investigationWorkflow: InvestigationStep[];
   relatedIncidents: RelatedIncident[];
   ragSources: string[];
   generatedAt: string;
+  /** Hints for PR generation (from /investigate endpoint). */
+  prTemplate?: string;
+  contributionGuidelines?: string;
 }
 
 // ─── Incident templates (deterministic, keyed by signal) ─────────────────────
@@ -126,6 +146,7 @@ interface IncidentTemplate {
   tools: AgentToolName[];
   ragSources: string[];
   related: RelatedIncident[];
+  workflow: InvestigationStep[];
 }
 
 const TEMPLATES: IncidentTemplate[] = [
@@ -167,6 +188,14 @@ const TEMPLATES: IncidentTemplate[] = [
       { id: "inc_204", title: "auth-service OOMKilled after cache rollout", similarity: 0.91, resolution: "Raised memory limit to 512Mi + bounded cache" },
       { id: "inc_155", title: "CrashLoopBackOff on api-gateway", similarity: 0.78, resolution: "Fixed readiness probe timing" },
     ],
+    workflow: [
+      { step: 1, label: "ML Classification", detail: "Classified as Kubernetes Failure with 93% confidence based on OOMKilled signal." },
+      { step: 2, label: "Runtime Metrics Review", detail: "Memory usage at 87% and rising; CPU normal — memory pressure confirmed." },
+      { step: 3, label: "Kubernetes State Check", detail: "api-gateway pod in CrashLoopBackOff; auth-service and postgres healthy." },
+      { step: 4, label: "GitHub Diff Review", detail: "Last commit added an unbounded in-memory LRU cache to api-gateway." },
+      { step: 5, label: "Execution Path Trace", detail: "Cache initialised on startup, grows with each request, no eviction path found." },
+      { step: 6, label: "RAG Repository Memory", detail: "k8s manifest retrieved; confirms memory limit was 256Mi before this deploy." },
+    ],
   },
   {
     match: /postgres|database|connection|ecconrefused|econnrefused|timeout/i,
@@ -206,6 +235,14 @@ pool.on("error", (err) => {
     related: [
       { id: "inc_188", title: "PostgreSQL connection timeout after deployment", similarity: 0.88, resolution: "Corrected DATABASE_URL + pool timeout" },
     ],
+    workflow: [
+      { step: 1, label: "ML Classification", detail: "Classified as Database Failure with 90% confidence from ECONNREFUSED signal." },
+      { step: 2, label: "Application Log Analysis", detail: "ECONNREFUSED to 10.0.4.12:5432 and pool exhausted (20/20) confirmed." },
+      { step: 3, label: "GitHub Diff Review", detail: "config/database.ts and .env.example both modified in the failing commit." },
+      { step: 4, label: "Repository Structure Scan", detail: "Found DB_HOST → DATABASE_URL rename in the env template." },
+      { step: 5, label: "RAG Repository Memory", detail: "Retrieved database.ts — old DB_HOST variable still referenced at connection." },
+      { step: 6, label: "Historical Incident Matching", detail: "88% similarity match to inc_188: same env var rename pattern." },
+    ],
   },
   {
     match: /500|api|http|endpoint|gateway 5/i,
@@ -243,6 +280,14 @@ pool.on("error", (err) => {
     related: [
       { id: "inc_162", title: "500s on /orders after middleware refactor", similarity: 0.83, resolution: "Reordered auth middleware" },
     ],
+    workflow: [
+      { step: 1, label: "ML Classification", detail: "Classified as API Failure with 86% confidence from HTTP 500 signal." },
+      { step: 2, label: "Application Log Analysis", detail: "TypeError: cannot read properties of undefined (req.user.id) in orderController." },
+      { step: 3, label: "Runtime Metrics Review", detail: "Error rate jumped from <1% to 41% immediately after deploy." },
+      { step: 4, label: "Execution Path Trace", detail: "POST /v1/orders → orderController.create → req.user read before auth middleware runs." },
+      { step: 5, label: "GitHub Diff Review", detail: "Auth middleware mount moved below router registration in src/app.ts." },
+      { step: 6, label: "RAG Repository Memory", detail: "Retrieved orderController.ts — no null guard on req.user found." },
+    ],
   },
   {
     match: /build|ci|pipeline|lint|compile|npm|deploy failed/i,
@@ -276,6 +321,13 @@ export function boardTypeLabel(kind: BoardKind) {
     ragSources: ["src/lib/work-item-types.tsx", "package.json", ".github/workflows/deploy.yml"],
     related: [
       { id: "inc_140", title: "next build type error blocked deploy", similarity: 0.8, resolution: "Fixed consumer type" },
+    ],
+    workflow: [
+      { step: 1, label: "ML Classification", detail: "Classified as CI/CD Failure with 84% confidence from build error signal." },
+      { step: 2, label: "Recent Deployment Correlation", detail: "Deployment aborted immediately — no image produced; prior deploy was healthy." },
+      { step: 3, label: "GitHub Diff Review", detail: "BoardKind type in src/lib/work-item-types.tsx widened in latest commit." },
+      { step: 4, label: "Repository Structure Scan", detail: "Found 3 consumers of BoardKind; board-view.tsx still references removed 'kind' property." },
+      { step: 5, label: "RAG Repository Memory", detail: "Retrieved type definition and board-view.tsx — narrowed the breaking change." },
     ],
   },
 ];
@@ -413,6 +465,7 @@ export function runIncidentAgent(deployment: Deployment): Promise<RootCauseAnaly
     recommendedFix: template.recommendedFix,
     codeSnippet: template.codeSnippet,
     toolSteps: template.tools.map((t) => ({ tool: t, label: toolLabel(t), detail: toolDetail(t) })),
+    investigationWorkflow: template.workflow,
     relatedIncidents: template.related,
     ragSources: template.ragSources,
     generatedAt: "just now",

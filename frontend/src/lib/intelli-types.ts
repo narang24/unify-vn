@@ -8,6 +8,8 @@ export interface IntelliChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  suggestedChanges?: any; // Replace with a more specific type if possible, or leave as any to avoid circular dependencies
+  timestamp?: string;
 }
 
 export interface IntelliChat {

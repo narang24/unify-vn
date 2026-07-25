@@ -1,15 +1,16 @@
 """
 Incident-analysis orchestrator — the proactive AI engineering assistant.
 
-Pipeline:
-  1. ML classification FIRST                ── ml.predict.classify_safe
-  2. Redis cache lookup                      ── memory.redis_memory
-  3. Enrich with REAL deployment logs        ── providers.github (when run id given)
-  4. RAG repository memory                   ── rag.retriever
-  5. Historical incident memory              ── memory.similar_incidents
-  6. Tool-driven investigation (LangGraph)   ── agent.graph (real tools)
-  7. Structured root-cause analysis + fix
-  8. Persist resolved incident to long-term memory + cache
+Pipeline (now parallelised for low latency):
+  1. ML classification FIRST          ── ml.predict.classify_safe
+  2. Redis cache lookup               ── memory.redis_memory  (returns immediately on hit)
+  3. PARALLEL:
+       a. Enrich with real deploy logs ── providers.github (when run id given)
+       b. RAG repository memory        ── rag.retriever
+       c. Historical incident memory   ── memory.similar_incidents
+  4. Tool-driven investigation        ── agent.graph (LangGraph, real tools)
+  5. Structured root-cause analysis + fix + workflow
+  6. Persist resolved incident + cache in Redis
 
 Every external dependency degrades gracefully so a result is always returned.
 """
@@ -17,11 +18,17 @@ Every external dependency degrades gracefully so a result is always returned.
 from __future__ import annotations
 
 import hashlib
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
 from config import DEFAULT_OWNER, DEFAULT_REPO, GEMINI_API_KEY, GEMINI_MODEL
 from ml.predict import classify_safe
 from rag.retriever import retrieve_text
 from memory.redis_memory import memory
+
+# Shared executor for parallelising blocking IO inside async-safe calls.
+_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="unify-agent")
 
 
 def _cache_key(incident: str, owner: str, repo: str) -> str:
@@ -91,12 +98,18 @@ def _structured_rca(incident: str, classification: dict, retrieved: str, investi
             language: str
             code: str
 
+        class WorkflowStep(BaseModel):
+            step: int
+            label: str
+            detail: str
+
         class RCA(BaseModel):
             problem: str
             likely_cause: str
             explanation: str
             suggested_fix: str
             code_snippet: CodeSnippet
+            workflow: list[WorkflowStep]
             confidence: float
 
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -113,6 +126,12 @@ Retrieved repository knowledge:
 
 Investigation notes from tools:
 {investigation}
+
+For the `workflow` field, produce an ordered list of investigation steps that were
+logically taken to reach this root cause (3-6 steps). Each step has:
+  step: sequential number (1-based)
+  label: short action name (e.g. "ML classification", "Log analysis", "Code diff review")
+  detail: one sentence describing what was found or confirmed at this step
 """
         response = client.models.generate_content(
             model=GEMINI_MODEL,
@@ -125,54 +144,100 @@ Investigation notes from tools:
         return None
 
 
+def _build_fallback_workflow(tools_used: list[str]) -> list[dict]:
+    """Generate a basic workflow list when Gemini structured synthesis fails."""
+    steps = []
+    label_map = {
+        "classify_incident": "ML incident classification",
+        "get_logs": "Application log analysis",
+        "get_metrics": "Runtime metrics review",
+        "get_kubernetes_status": "Kubernetes state check",
+        "get_recent_deployments": "Recent deployment correlation",
+        "get_github_changes": "GitHub diff review",
+        "scan_repository": "Repository structure scan",
+        "build_execution_graph": "Execution path trace",
+        "retrieve_repository_knowledge": "RAG repository knowledge retrieval",
+        "get_similar_incidents": "Historical incident matching",
+    }
+    for i, tool in enumerate(tools_used, 1):
+        steps.append({
+            "step": i,
+            "label": label_map.get(tool, tool.replace("_", " ").title()),
+            "detail": f"Executed {tool} to gather evidence.",
+        })
+    return steps or [{"step": 1, "label": "Classification", "detail": "Incident classified by ML model."}]
+
+
 def analyze_incident(
     incident: str,
     owner: str = DEFAULT_OWNER,
     repo: str = DEFAULT_REPO,
     deployment: dict | None = None,
 ) -> dict:
+    # ── 1. Fast ML classification ─────────────────────────────────────────
     classification = classify_safe(incident)
 
+    # ── 2. Redis cache hit? ───────────────────────────────────────────────
     key = _cache_key(incident, owner, repo)
     cached = memory.cache_get(key)
     if cached:
         return {**cached, "cached": True}
 
-    incident = _enrich_with_real_logs(incident, owner, repo, deployment)
-    retrieved = retrieve_text(f"{incident} {classification['category']}")
-    similar = memory.similar_incidents(incident, k=3)
+    # ── 3. Parallel enrichment ────────────────────────────────────────────
+    t_start = time.monotonic()
 
+    futures: dict[str, Any] = {}
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="unify-enrich") as pool:
+        futures["logs"] = pool.submit(_enrich_with_real_logs, incident, owner, repo, deployment)
+        futures["rag"]  = pool.submit(retrieve_text, f"{incident} {classification['category']}")
+        futures["similar"] = pool.submit(memory.similar_incidents, incident, 3)
+
+    enriched_incident = futures["logs"].result()
+    retrieved         = futures["rag"].result()
+    similar           = futures["similar"].result()
+
+    # ── 4. LangGraph investigation (may be slow — runs after enrichment) ──
     investigation, tools_used = "", []
     try:
-        investigation, tools_used = _run_graph_investigation(incident, owner, repo, classification, retrieved)
+        investigation, tools_used = _run_graph_investigation(
+            enriched_incident, owner, repo, classification, retrieved
+        )
     except Exception as exc:  # noqa: BLE001
         print(f"[agent] investigation unavailable: {exc}")
 
-    rca = _structured_rca(incident, classification, retrieved, investigation)
+    # ── 5. Structured RCA via Gemini ──────────────────────────────────────
+    rca = _structured_rca(enriched_incident, classification, retrieved, investigation)
     rag_grounded = bool(retrieved) and "not indexed" not in retrieved
 
+    elapsed_ms = round((time.monotonic() - t_start) * 1000)
+
+    # Build the workflow (from RCA or fallback)
+    workflow = (rca["workflow"] if rca else None) or _build_fallback_workflow(tools_used)
+
     result = {
-        "problem": rca["problem"] if rca else f"{classification['category']}: {incident[:120]}",
-        "category": classification["category"],
+        "problem":        rca["problem"] if rca else f"{classification['category']}: {incident[:120]}",
+        "category":       classification["category"],
         "classification": classification,
-        "confidence": rca["confidence"] if rca else classification["confidence"],
-        "root_cause": rca["likely_cause"] if rca else (investigation or "Root cause pending deeper analysis."),
-        "explanation": rca["explanation"] if rca else investigation,
-        "suggested_fix": rca["suggested_fix"] if rca else "Review the highlighted change and revert or guard it.",
-        "code_snippet": rca["code_snippet"] if rca else None,
-        "tools_used": tools_used or ["classify_incident", "retrieve_repository_knowledge", "get_similar_incidents"],
+        "confidence":     rca["confidence"] if rca else classification["confidence"],
+        "root_cause":     rca["likely_cause"] if rca else (investigation or "Root cause pending deeper analysis."),
+        "explanation":    rca["explanation"] if rca else investigation,
+        "suggested_fix":  rca["suggested_fix"] if rca else "Review the highlighted change and revert or guard it.",
+        "code_snippet":   rca["code_snippet"] if rca else None,
+        "workflow":       workflow,
+        "tools_used":     tools_used or ["classify_incident", "retrieve_repository_knowledge", "get_similar_incidents"],
         "similar_incidents": similar,
-        "rag_grounded": rag_grounded,
+        "rag_grounded":   rag_grounded,
+        "elapsed_ms":     elapsed_ms,
     }
 
     memory.remember_incident(
         {
-            "incident": incident,
-            "category": classification["category"],
-            "root_cause": result["root_cause"],
+            "incident":     enriched_incident,
+            "category":     classification["category"],
+            "root_cause":   result["root_cause"],
             "suggested_fix": result["suggested_fix"],
-            "owner": owner,
-            "repo": repo,
+            "owner":        owner,
+            "repo":         repo,
         }
     )
     memory.cache_set(key, result, ttl_seconds=1800)

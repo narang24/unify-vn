@@ -4,6 +4,7 @@
   /* ---- Unify palette (Jira-inspired, neutral light) ---- */
   --dark-teal: #0c8f8f;
   --mint: #e6f4f3;
+  --mint-light: #f2f9f8;
   --lagoon: #2f9aa6;
   --glacier: #a7bbd1;
   --breeze: #82adcb;
@@ -27,6 +28,8 @@
 
   /* slightly-rounded, not pill — Jira-like */
   --radius: 10px;
+  
+  --navbar: var(--mint-light);
 }
 
 .dark {
@@ -42,6 +45,7 @@
   --secondary: #262b30;
   --border-subtle: rgba(255, 255, 255, 0.09);
   --ring: #46b5b5;
+  --navbar: var(--panel);
 }
 
 @theme inline {
@@ -58,8 +62,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-display);
+  --color-navbar: var(--navbar);
+  --font-sans: var(--font-raleway);
+  --font-display: var(--font-raleway);
 }
 
 * {
@@ -68,6 +73,7 @@
 
 html {
   color-scheme: light;
+  font-size: 16.5px;
 }
 html.dark {
   color-scheme: dark;
@@ -76,7 +82,7 @@ html.dark {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-raleway), sans-serif;
   min-height: 100vh;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -119,20 +125,23 @@ a {
 /* ─── Aceternity-style dotted glow background (Unify Intelli) ─────────────── */
 .dotted-glow {
   position: relative;
-  background-color: var(--background);
   background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
   background-size: 18px 18px;
+  background-color: var(--background);
 }
+/* Ambient faint teal glow */
 .dotted-glow::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 60% 55% at 50% 42%,
-    color-mix(in srgb, var(--accent) 16%, transparent),
-    transparent 70%
-  );
+  background-image:
+    radial-gradient(
+      ellipse 60% 55% at 50% 42%,
+      color-mix(in srgb, var(--accent) 16%, transparent),
+      transparent 70%
+    );
+  opacity: 0.8;
 }
 .dotted-glow > * {
   position: relative;

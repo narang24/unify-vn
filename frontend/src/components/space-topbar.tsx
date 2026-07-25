@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart2,
@@ -18,10 +18,13 @@ import {
   Pin,
   Trash2,
   Eye,
+  BarChart3,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AvatarCircles } from "@/components/ui/avatar-circles";
 import { BoardCapsule } from "@/components/ui/board-capsule";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,16 +35,19 @@ import { SummaryView } from "@/components/views/summary-view";
 import { ListView } from "@/components/views/list-view";
 import { TimelineView } from "@/components/views/timeline-view";
 import { CalendarView } from "@/components/views/calendar-view";
+import { ReportsView } from "@/components/views/reports-view";
 import { BoardView } from "@/components/board-view";
 import { BacklogView } from "@/components/backlog-view";
 import { AddMembersDialog } from "@/components/views/add-members-dialog";
 import { ConnectRepoDialog } from "@/components/views/connect-repo-dialog";
+import { EditWorkItemDialog, type WorkItemPayload } from "@/components/edit-work-item-dialog";
+import { BoardIntelliSidebar } from "@/components/board-intelli-sidebar";
 import { toast } from "@/lib/use-toast";
 import { cn } from "@/lib/utils";
 import { DEFAULT_COLUMNS, type BoardColumn, type BoardKind, type SpaceWorkItem } from "@/lib/work-item-types";
 import type { ConnectedRepository } from "@/lib/repo-types";
 
-export type SpaceView = "summary" | "list" | "board" | "timeline" | "calendar" | "backlog";
+export type SpaceView = "summary" | "list" | "board" | "timeline" | "calendar" | "backlog" | "reports";
 
 const TABS: { id: SpaceView; label: string; icon: typeof Kanban }[] = [
   { id: "summary",  label: "Summary",  icon: BarChart2 },
@@ -50,6 +56,7 @@ const TABS: { id: SpaceView; label: string; icon: typeof Kanban }[] = [
   { id: "timeline", label: "Timeline", icon: GanttChartSquare },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "backlog",  label: "Backlog",  icon: BookOpen },
+  { id: "reports",  label: "Reports",  icon: BarChart3 },
 ];
 
 interface SpaceTopbarProps {
@@ -66,13 +73,15 @@ interface SpaceTopbarProps {
   onMove: (itemId: string, toStatus: string) => void;
   onCreate: (status: string) => void;
   onCreateWithDate?: (dateISO: string) => void;
-  onEditItem?: (item: SpaceWorkItem) => void;
+  onEditItem?: (item: SpaceWorkItem, payload: WorkItemPayload) => void;
+  onDeleteItem?: (id: string) => void;
   onAddColumn?: (label: string) => void;
   onConnectRepo?: (repo: ConnectedRepository) => void;
   onViewRepo?: (id: string) => void;
   onPinSpace?: () => void;
   onDeleteSpace?: () => void;
   onCreateBacklog: (target: "sprint" | "backlog") => void;
+  initialAiChanges?: WorkItemPayload | null;
 }
 
 export function SpaceTopbar({
@@ -90,23 +99,46 @@ export function SpaceTopbar({
   onCreate,
   onCreateWithDate,
   onEditItem,
+  onDeleteItem,
   onAddColumn,
   onConnectRepo,
   onViewRepo,
   onPinSpace,
   onDeleteSpace,
   onCreateBacklog,
+  initialAiChanges,
 }: SpaceTopbarProps) {
   const isScrum = boardType === "scrum";
   const [activeView, setActiveView] = useState<SpaceView>(isScrum ? "backlog" : "board");
   const [membersOpen, setMembersOpen] = useState(false);
   const [repoOpen, setRepoOpen] = useState(false);
 
+  // Edit modal state
+  const [editingItem, setEditingItem] = useState<SpaceWorkItem | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  // Board Intelli sidebar state
+  const [intelliOpen, setIntelliOpen] = useState(false);
+  const [intelliContext, setIntelliContext] = useState<SpaceWorkItem | null>(null);
+
+  // Handle external AI changes (e.g. from the main Intelli workspace)
+  useEffect(() => {
+    if (initialAiChanges && initialAiChanges.id) {
+      const item = items.find((i) => i.id === initialAiChanges.id);
+      if (item) {
+        setEditingItem(item);
+        setEditDialogOpen(true);
+      }
+    }
+  }, [initialAiChanges, items]);
+
   const doneId = columns[columns.length - 1]?.id;
   const backlogItems = items.filter((i) => i.status === "todo");
   const sprintItems = items.filter((i) => i.status !== "todo");
 
   const memberNames = [currentUser?.fullName || currentUser?.email || "You"];
+
+  const epics = items.filter((it) => it.type === "epic");
 
   function copyLink() {
     try {
@@ -117,17 +149,38 @@ export function SpaceTopbar({
     }
   }
 
+  function handleOpenEdit(item: SpaceWorkItem) {
+    setEditingItem(item);
+    setEditDialogOpen(true);
+  }
+
+  function handleOpenIntelli(item?: SpaceWorkItem) {
+    setIntelliContext(item ?? null);
+    setIntelliOpen(true);
+  }
+
+  async function handleEditSubmit(payload: WorkItemPayload) {
+    if (editingItem) {
+      onEditItem?.(editingItem, payload);
+    }
+  }
+
+  function handleDeleteItem(id: string) {
+    onDeleteItem?.(id);
+    setEditDialogOpen(false);
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* ── Space header ──────────────────────────────────────────────────── */}
-      <div className="border-b border-border-subtle bg-panel">
+      <div className="border-b border-border-subtle bg-navbar">
         {/* Row 1: space name + right actions */}
         <div className="flex items-center gap-2 px-5 pt-3 pb-2">
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-[11px] font-bold text-accent-foreground">
               {spaceName[0]?.toUpperCase() ?? "S"}
             </div>
-            <h1 className="truncate text-[15px] font-semibold text-foreground">{spaceName}</h1>
+            <h1 className="truncate text-[15px] font-bold text-foreground">{spaceName}</h1>
             <BoardCapsule kind={boardType} className="shrink-0" />
             {workspaceName && <span className="hidden text-[12px] text-muted sm:inline">· {workspaceName}</span>}
           </div>
@@ -135,6 +188,16 @@ export function SpaceTopbar({
           {/* Right: action buttons */}
           <div className="ml-auto flex items-center gap-1.5">
             <AvatarCircles names={memberNames} size={24} className="mr-0.5" />
+
+            {/* Unify Intelli Insights — prominent */}
+            <HoverBorderGradient
+              onClick={() => handleOpenIntelli()}
+              active={intelliOpen}
+              className="group hidden h-8 items-center gap-1.5 px-3 text-[12px] sm:flex"
+            >
+              <Sparkles className="h-3.5 w-3.5 group-hover:text-white dark:group-hover:text-[#2f9aa6]" />
+              Unify Intelli Insights
+            </HoverBorderGradient>
 
             <Button variant="outline" size="sm" className="hidden h-8 gap-1.5 text-[12px] sm:inline-flex" onClick={() => setMembersOpen(true)}>
               <UserPlus className="h-3.5 w-3.5" />
@@ -196,7 +259,7 @@ export function SpaceTopbar({
                   key={tab.id}
                   onClick={() => setActiveView(tab.id)}
                   className={cn(
-                    "relative flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-[12.5px] font-medium whitespace-nowrap transition-colors",
+                    "relative flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors",
                     isActive ? "text-accent" : "text-muted hover:text-foreground",
                   )}
                 >
@@ -241,7 +304,7 @@ export function SpaceTopbar({
                 columns={columns}
                 onMove={onMove}
                 onCreate={onCreate}
-                onEdit={onEditItem}
+                onEdit={handleOpenEdit}
                 onAddColumn={onAddColumn}
               />
             )}
@@ -258,11 +321,45 @@ export function SpaceTopbar({
                 onCreate={onCreateBacklog}
               />
             )}
+            {activeView === "reports" && (
+              <ReportsView
+                items={items}
+                spaceName={spaceName}
+                onOpenIntelli={() => handleOpenIntelli()}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* ── Dialogs ─────────────────────────────────────────────────────── */}
+      {/* ── Edit Work Item Modal ─────────────────────────────────────────── */}
+      {editingItem && (
+        <EditWorkItemDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          editing={editingItem}
+          spaceName={spaceName}
+          epics={epics}
+          onSubmit={handleEditSubmit}
+          onDelete={onDeleteItem ? handleDeleteItem : undefined}
+          initialAiChanges={initialAiChanges}
+          onOpenIntelli={(item) => {
+            setEditDialogOpen(false);
+            handleOpenIntelli(item);
+          }}
+        />
+      )}
+
+      {/* ── Board Intelli Sidebar ────────────────────────────────────────── */}
+      <BoardIntelliSidebar
+        open={intelliOpen}
+        onClose={() => setIntelliOpen(false)}
+        spaceName={spaceName}
+        items={items}
+        preloadedContext={intelliContext}
+      />
+
+      {/* ── Other Dialogs ────────────────────────────────────────────────── */}
       <AddMembersDialog open={membersOpen} onClose={() => setMembersOpen(false)} spaceName={spaceName} />
       <ConnectRepoDialog
         open={repoOpen}

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, MessageSquare, Clock, PanelLeftClose, PanelLeftOpen, Filter, Search } from "lucide-react";
+import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Filter, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import type { IntelliChat } from "@/lib/intelli-types";
@@ -51,11 +51,12 @@ export function IntelliSidebar({
         </button>
       </div>
 
-      <div className="space-y-0.5 p-2">
+      {/* Nav buttons — extra gap between New Chat and Recents */}
+      <div className="flex flex-col gap-2 p-2">
         <button
           onClick={onNewChat}
           className={cn(
-            "flex w-full items-center gap-2 rounded-lg bg-accent px-2.5 py-2 text-[12.5px] font-medium text-white hover:bg-accent-soft",
+            "flex w-full items-center gap-2 rounded-lg bg-accent px-2.5 py-2 text-[12.5px] font-semibold text-white hover:bg-accent-soft",
             collapsed && "justify-center px-0",
           )}
         >
@@ -65,23 +66,12 @@ export function IntelliSidebar({
         <button
           onClick={() => onSelectPanel("chats")}
           className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium hover:bg-foreground/[0.06]",
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold hover:bg-foreground/[0.06]",
             activePanel === "chats" ? "bg-accent/10 text-accent" : "text-foreground",
             collapsed && "justify-center px-0",
           )}
         >
           <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-          {!collapsed && "Chats"}
-        </button>
-        <button
-          onClick={() => onSelectPanel("recents")}
-          className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium hover:bg-foreground/[0.06]",
-            activePanel === "recents" ? "bg-accent/10 text-accent" : "text-foreground",
-            collapsed && "justify-center px-0",
-          )}
-        >
-          <Clock className="h-3.5 w-3.5 shrink-0" />
           {!collapsed && "Recents"}
         </button>
       </div>
@@ -92,8 +82,8 @@ export function IntelliSidebar({
             {activePanel === "chats" && (
               <motion.div key="chats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
                 <div className="flex items-center justify-between px-1 py-2">
-                  <span className="text-[12.5px] font-semibold text-foreground">Chats</span>
-                  <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-foreground/[0.06] hover:text-foreground">
+                  <span className="text-[12.5px] font-semibold text-foreground">Recents</span>
+                  <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground">
                     <Filter className="h-3 w-3" /> Filter
                   </button>
                 </div>
@@ -103,7 +93,7 @@ export function IntelliSidebar({
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
                     placeholder="Search Chats"
-                    className="h-8 pl-8 text-[12px]"
+                    className="h-8 pl-8 text-[12px] font-semibold"
                   />
                 </div>
                 <div className="space-y-0.5">
@@ -111,19 +101,8 @@ export function IntelliSidebar({
                     <ChatRow key={chat.id} chat={chat} active={chat.id === activeChatId} onClick={() => onSelectChat(chat.id)} />
                   ))}
                   {filteredChats.length === 0 && (
-                    <p className="px-1.5 py-3 text-center text-[11.5px] text-muted">No chats match your search.</p>
+                    <p className="px-1.5 py-3 text-center text-[11.5px] font-semibold text-muted">No chats match your search.</p>
                   )}
-                </div>
-              </motion.div>
-            )}
-
-            {activePanel === "recents" && (
-              <motion.div key="recents" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
-                <p className="px-1 py-2 text-[12.5px] font-semibold text-foreground">Recents</p>
-                <div className="space-y-0.5">
-                  {recents.map((chat) => (
-                    <ChatRow key={chat.id} chat={chat} active={chat.id === activeChatId} onClick={() => onSelectChat(chat.id)} />
-                  ))}
                 </div>
               </motion.div>
             )}
@@ -154,13 +133,13 @@ function ChatRow({ chat, active, onClick }: { chat: IntelliChat; active: boolean
         active && "bg-accent/10",
       )}
     >
-      <span className={cn("w-full truncate text-[12.5px] font-medium", active ? "text-accent" : "text-foreground")}>
+      <span className={cn("w-full truncate text-[12.5px] font-semibold", active ? "text-accent" : "text-foreground")}>
         {chat.title}
       </span>
       {chat.preview && (
-        <span className="w-full truncate text-[11px] text-muted">{chat.preview}</span>
+        <span className="w-full truncate text-[11px] font-semibold text-muted">{chat.preview}</span>
       )}
-      <span className="text-[10px] text-muted/70">{chat.updatedAt}</span>
+      <span className="text-[10px] font-semibold text-muted/70">{chat.updatedAt}</span>
     </button>
   );
 }

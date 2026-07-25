@@ -14,6 +14,7 @@ export interface ConnectedRepository {
     defaultBranch: string;
     connectedAt: string;
     avatarColor: string;
+    owner?: string;
 }
 
 export interface RepoFileNode {

@@ -20,6 +20,7 @@ import {
   LogOut,
   ChevronRight,
   GripVertical,
+  SquareArrowOutUpRight,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import { RepoSidebarSection } from "@/components/repo/repo-sidebar-section";
 import { BoardCapsule } from "@/components/ui/board-capsule";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+import { GlobalSearch } from "@/components/global-search";
+import { NotificationPanel } from "@/components/notification-panel";
 import { usePrefs } from "@/lib/prefs-context";
 import type { ConnectedRepository } from "@/lib/repo-types";
 import type { BoardKind } from "@/lib/work-item-types";
@@ -113,7 +117,7 @@ export function AppShell(props: AppShellProps) {
       {!fullscreen && (
         <aside
           className={cn(
-            "hidden shrink-0 flex-col border-r border-border-subtle bg-panel p-2.5 transition-[width] duration-200 md:flex",
+            "hidden shrink-0 flex-col border-r border-border-subtle bg-navbar py-2.5 pl-2.5 pr-0 transition-[width] duration-200 md:flex",
             collapsed ? "w-16" : "w-64",
           )}
         >
@@ -128,7 +132,7 @@ export function AppShell(props: AppShellProps) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border-subtle bg-panel px-3 sm:px-4">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border-subtle bg-navbar px-3 sm:px-4">
           {!fullscreen && (
             <Button
               variant="ghost"
@@ -150,51 +154,56 @@ export function AppShell(props: AppShellProps) {
             <LayoutGrid className="h-4 w-4" />
           </Button>
 
-          <div className="hidden min-w-0 items-center gap-2 sm:flex">
-            <span className="truncate text-[13.5px] font-semibold text-foreground">
-              Welcome{greetingName ? `, ${greetingName}` : ""}!
+          <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
+            <span className="truncate text-[13.5px]">
+              <span className="font-semibold text-foreground">Greetings{greetingName ? `, ${greetingName}` : ""}! </span>
+              <span className="font-semibold text-muted">Welcome to your space.</span>
             </span>
-            <span className="hidden truncate text-[12.5px] text-muted lg:inline">Welcome to your space!</span>
           </div>
 
           {/* Centered search */}
-          <div className="relative mx-auto w-full max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-            <Input placeholder="Search" className="h-8 rounded-lg pl-8 text-[13px]" />
-          </div>
+          <GlobalSearch
+            workspaces={props.workspaces}
+            onSelectSpace={(id) => {
+              props.onSelectSpace(id);
+            }}
+            onSelectWorkspace={(id) => {
+              props.onSelectWorkspace(id);
+            }}
+          />
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-2">
             <Button size="sm" onClick={onCreateItem} className="hidden rounded-lg sm:inline-flex">
               <Plus className="h-3.5 w-3.5" /> Create
             </Button>
             <Button size="icon" variant="ghost" onClick={onCreateItem} className="h-8 w-8 sm:hidden" aria-label="Create">
               <Plus className="h-4 w-4" />
             </Button>
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" className="hidden h-8 w-8 sm:inline-flex" aria-label="Notifications">
-              <Bell className="h-4 w-4" />
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <button className="ml-1 rounded-full ring-2 ring-transparent hover:ring-border-subtle">
-                  <Avatar name={user?.fullName ?? user?.email} size={28} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <div className="px-2.5 py-1.5">
-                  <p className="truncate text-[13px] font-medium">{user?.fullName || "Account"}</p>
-                  <p className="truncate text-[11px] text-muted">{user?.email}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Settings className="h-3.5 w-3.5" /> Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem destructive onClick={onSignOut}>
-                  <LogOut className="h-3.5 w-3.5" /> Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Icon group — equally spaced */}
+            <div className="flex items-center gap-1.5">
+              <ThemeToggle />
+              <NotificationPanel onSelectSpace={props.onSelectSpace} />
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <button className="rounded-full ring-2 ring-transparent hover:ring-border-subtle">
+                    <Avatar name={user?.fullName ?? user?.email} size={28} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <div className="px-2.5 py-1.5">
+                    <p className="truncate text-[13px] font-semibold">{user?.fullName || "Account"}</p>
+                    <p className="truncate text-[11px] font-semibold text-muted">{user?.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Settings className="h-3.5 w-3.5" /> Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem destructive onClick={onSignOut}>
+                    <LogOut className="h-3.5 w-3.5" /> Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 
@@ -235,12 +244,21 @@ function SidebarBody({
 
   const [draggingSection, setDraggingSection] = React.useState<null | "ws" | "repo">(null);
 
+  // Global safety-net: always clear the drop-zone highlight when the pointer
+  // is released anywhere on the page (covers cases where the pointer-up fires
+  // on Framer Motion's drag overlay instead of the item button).
+  React.useEffect(() => {
+    const clear = () => setDraggingSection(null);
+    window.addEventListener("pointerup", clear);
+    return () => window.removeEventListener("pointerup", clear);
+  }, []);
+
   return (
-    <div className="flex h-full flex-col overflow-y-auto scroll-thin">
+    <div className="flex h-full flex-col overflow-y-auto scroll-thin pr-2">
       {/* Circular Unify logo */}
-      <div className={cn("mb-2 flex items-center gap-2 px-1.5 py-1", collapsed && "justify-center px-0")}>
-        <Logo size={28} />
-        {!collapsed && <span className="text-[15px] font-semibold tracking-tight text-foreground">Unify</span>}
+      <div className={cn("mb-2 flex items-center gap-2.5 px-1.5 py-1", collapsed && "justify-center px-0")}>
+        <Logo size={36} />
+        {!collapsed && <span className="text-[18.5px] font-bold tracking-tight text-foreground">Unify</span>}
       </div>
 
       {/* Recent / Teams / Starred */}
@@ -252,7 +270,7 @@ function SidebarBody({
               key={label}
               onClick={() => onSelectNav?.(nav)}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium hover:bg-foreground/[0.06]",
+                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold hover:bg-foreground/[0.06]",
                 active ? "bg-accent/10 text-accent" : "text-foreground",
                 collapsed && "justify-center px-0",
               )}
@@ -265,20 +283,21 @@ function SidebarBody({
       </nav>
 
       {/* Unify Intelli (highlighted) */}
-      <div className="mt-3">
-        <button
+      <div className="mt-3 flex justify-center px-1.5">
+        <HoverBorderGradient
           onClick={onOpenIntelli}
-          className={cn(
-            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-colors",
-            intelliActive
-              ? "bg-accent text-accent-foreground"
-              : "bg-accent/[0.09] text-foreground hover:bg-accent/[0.16]",
-            collapsed && "justify-center px-0",
-          )}
+          active={intelliActive}
+          containerClassName={cn("w-full max-w-[225px]", collapsed && "w-min justify-center")}
+          className={cn("group gap-2.5 px-2.5 py-2", collapsed && "px-0 justify-center")}
         >
-          <Lightbulb className={cn("h-4 w-4 shrink-0", intelliActive ? "text-accent-foreground" : "text-accent")} />
-          {!collapsed && "Unify Intelli"}
-        </button>
+          <Lightbulb className="h-4 w-4 shrink-0 text-[#2f9aa6] group-hover:text-white dark:group-hover:text-[#2f9aa6]" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">Unify Intelli</span>
+              <SquareArrowOutUpRight className="h-4 w-4 shrink-0 text-[#2f9aa6] opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-hover:text-white dark:group-hover:text-[#2f9aa6]" />
+            </>
+          )}
+        </HoverBorderGradient>
       </div>
 
       {/* Repositories */}
@@ -300,7 +319,7 @@ function SidebarBody({
       <div className="mt-3">
         <div className="flex items-center justify-between px-2.5">
           {!collapsed && (
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Workspaces</span>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted">Workspaces</span>
           )}
           <button
             onClick={onCreateWorkspace}
@@ -356,7 +375,7 @@ function SidebarBody({
       <div className="mt-auto space-y-0.5 pt-3">
         <button
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-muted hover:bg-foreground/[0.06] hover:text-foreground",
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground",
             collapsed && "justify-center px-0",
           )}
         >
@@ -365,7 +384,7 @@ function SidebarBody({
         </button>
         <button
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-muted hover:bg-foreground/[0.06] hover:text-foreground",
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground",
             collapsed && "justify-center px-0",
           )}
         >
@@ -431,6 +450,7 @@ function WorkspaceRow({
       <div
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
+        onPointerUp={onDragEnd}
         className={cn("group flex items-center gap-1 rounded-lg pr-1", armed && "drag-armed")}
       >
         <DragHandle
@@ -442,7 +462,7 @@ function WorkspaceRow({
         <button
           onClick={() => onSelectWorkspace(ws.id)}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-medium hover:bg-foreground/[0.06]",
+            "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-semibold hover:bg-foreground/[0.06]",
             active ? "bg-accent/10 text-accent" : "text-foreground",
           )}
         >
@@ -510,6 +530,7 @@ function SpaceRow({
           if (armTimer.current) clearTimeout(armTimer.current);
           setArmed(false);
         }}
+        onPointerUp={onDragEnd}
         className={cn("group flex items-center gap-1 rounded-md", armed && "drag-armed")}
       >
         <DragHandle
@@ -521,12 +542,17 @@ function SpaceRow({
         <button
           onClick={onSelect}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-[12.5px] hover:bg-foreground/[0.06]",
-            active ? "bg-accent/10 font-medium text-accent" : "text-foreground",
+            "flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-[12.5px] font-semibold hover:bg-foreground/[0.06]",
+            active ? "bg-accent/10 text-accent" : "text-foreground",
           )}
-          onPointerUp={onDragEnd}
         >
-          <Kanban className="h-3 w-3 shrink-0 text-muted" />
+          {sp.kind === "kanban" ? (
+              <img src="/kanban-sign.png" alt="Kanban" className="h-3.5 w-3.5 shrink-0 object-contain" />
+            ) : sp.kind === "scrum" ? (
+              <img src="/scrum-sign.png" alt="Scrum" className="h-3.5 w-3.5 shrink-0 object-contain" />
+            ) : (
+              <Kanban className="h-3 w-3 shrink-0 text-muted" />
+            )}
           <span className="truncate">{sp.name}</span>
           <BoardCapsule kind={sp.kind} className="ml-auto shrink-0" />
         </button>

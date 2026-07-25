@@ -153,23 +153,21 @@ function WorkItemCard({
       animate={{ opacity: dragging ? 0.4 : 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.15 }}
+      onClick={(e) => {
+        // Don't open edit if clicking the dropdown trigger or move buttons
+        const target = e.target as HTMLElement;
+        if (!target.closest("[data-no-card-click]") && onEdit) {
+          onEdit(item);
+        }
+      }}
       className={cn(
-        "group cursor-grab rounded-lg border border-border-subtle bg-panel p-2.5 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing",
+        "group cursor-pointer rounded-lg border border-border-subtle bg-panel p-2.5 shadow-sm transition-shadow hover:border-accent/30 hover:shadow-md active:cursor-grabbing",
         dragging && "ring-2 ring-accent",
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-[13px] font-medium leading-snug text-foreground">{item.title}</p>
-        <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
-          {onEdit && (
-            <button
-              onClick={() => onEdit(item)}
-              className="rounded-md p-0.5 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
-              aria-label="Edit"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          )}
+        <div data-no-card-click className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
           <DropdownMenu>
             <DropdownMenuTrigger>
               <button className="rounded-md p-0.5 text-muted hover:bg-foreground/[0.06]" aria-label="Move">
@@ -183,7 +181,7 @@ function WorkItemCard({
                 </DropdownMenuItem>
               )}
               {columns.filter((c) => c.id !== item.status).map((c) => (
-                <DropdownMenuItem key={c.id} onClick={() => onMove(item.id, c.id)}>
+                <DropdownMenuItem key={c.id} onClick={(e) => { e.stopPropagation(); onMove(item.id, c.id); }}>
                   <ArrowRight className="h-3.5 w-3.5" /> Move to {c.label}
                 </DropdownMenuItem>
               ))}

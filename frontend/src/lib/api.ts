@@ -90,6 +90,7 @@ export interface ApiIncident {
   suggestedFix: string | null;
   codeSnippet: { filename: string; language: string; code: string } | null;
   toolsUsed: string[];
+  workflow?: { step: number; label: string; detail: string }[];
   similarIncidents: { id?: string; category?: string; root_cause?: string; similarity?: number }[];
   ragSources: string[];
   status: "open" | "resolved" | "dismissed";
@@ -150,6 +151,8 @@ export const generatePullRequest = (incidentId: string) =>
   req<{ incident: ApiIncident; prNumber: number }>(`/incidents/${incidentId}/pull_request`, { method: "POST" });
 export const markIncidentSeen = (incidentId: string) =>
   req<{ incident: ApiIncident }>(`/incidents/${incidentId}`, { method: "PATCH", body: JSON.stringify({ seen: true }) });
+export const draftPullRequest = (incidentId: string, rca: Record<string, unknown>) =>
+  req<{ title: string; branch: string; body: string }>(`/incidents/${incidentId}/pull_request/draft`, { method: "POST", body: JSON.stringify({ rca }) });
 
 // ─── GitHub (real data via stored OAuth token) ───────────────────────────────
 export interface GhRepo {

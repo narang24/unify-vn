@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SelectOption {
@@ -46,7 +46,7 @@ export function Select({
           {selected?.icon}
           {selected?.label ?? "Select…"}
         </span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted" />
+        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
       <AnimatePresence>
         {open && (
