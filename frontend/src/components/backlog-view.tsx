@@ -30,7 +30,7 @@ export function BacklogView({
   const [backlogOpen, setBacklogOpen] = React.useState(true);
 
   return (
-    <div className="h-full overflow-y-auto scroll-thin p-4">
+    <div className="h-full overflow-y-auto scroll-thin p-4 font-semibold">
       {showSprint && (
         <div className="mb-4">
           <BacklogSection
@@ -152,7 +152,7 @@ function EmptyState({
 }) {
   return (
     <div className={cn("rounded-xl border border-dashed border-border-subtle text-center", compact ? "py-6" : "py-10")}>
-      <p className="text-[13px] font-medium text-foreground">{title}</p>
+      <p className="text-[13px] font-semibold text-foreground">{title}</p>
       <p className="mx-auto mt-1 max-w-sm text-[12px] text-muted">{description}</p>
     </div>
   );

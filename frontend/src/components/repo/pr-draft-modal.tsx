@@ -122,7 +122,7 @@ export function PrDraftModal({ open, onOpenChange, owner, repo, draft, loading }
                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
                       PR Title
                     </label>
-                    <div className="rounded-lg border border-border-subtle bg-panel-strong/30 px-3 py-2.5 text-[13px] font-medium text-foreground">
+                    <div className="rounded-lg border border-border-subtle bg-panel-strong/30 px-3 py-2.5 text-[13px] font-semibold text-foreground">
                       {draft.title}
                     </div>
                   </div>
@@ -146,7 +146,7 @@ export function PrDraftModal({ open, onOpenChange, owner, repo, draft, loading }
                       </label>
                       <button
                         onClick={copyBody}
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-muted hover:bg-foreground/6 hover:text-foreground"
                       >
                         {copied ? (
                           <><Check className="h-3 w-3 text-emerald-500" /> Copied</>
@@ -173,7 +173,7 @@ export function PrDraftModal({ open, onOpenChange, owner, repo, draft, loading }
             <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-border-subtle px-5 py-3.5">
               <button
                 onClick={() => onOpenChange(false)}
-                className="rounded-lg border border-border-subtle px-4 py-2 text-[12.5px] font-medium text-foreground hover:bg-foreground/[0.06]"
+                className="rounded-lg border border-border-subtle px-4 py-2 text-[12.5px] font-semibold text-foreground hover:bg-foreground/6"
               >
                 Close
               </button>
@@ -181,7 +181,7 @@ export function PrDraftModal({ open, onOpenChange, owner, repo, draft, loading }
                 <button
                   id="pr-draft-modal-open-github"
                   onClick={openGitHub}
-                  className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-[12.5px] font-medium text-accent-foreground hover:bg-accent-soft"
+                  className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-[12.5px] font-semibold text-accent-foreground hover:bg-accent-soft"
                 >
                   <GitPullRequest className="h-3.5 w-3.5" />
                   Open GitHub
@@ -222,7 +222,7 @@ function LoadingState() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.2 }}
-          className="text-[13px] font-medium text-muted"
+          className="text-[13px] font-semibold text-muted"
         >
           {messages[idx]}
         </motion.p>

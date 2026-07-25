@@ -27,7 +27,7 @@ export function PullRequestsView({
     const selectedIds = new Set(selectedChips.filter((c) => c.type === "pr").map((c) => c.meta));
 
     return (
-        <div className="h-full overflow-y-auto scroll-thin p-4">
+        <div className="h-full overflow-y-auto scroll-thin p-4 font-semibold">
             <p className="mb-3 text-[12px] text-muted">
                 Fetched from GitHub for this repository. <span className="opacity-70">(mock data — live sync pending)</span>
             </p>
@@ -57,7 +57,7 @@ export function PullRequestsView({
                             )}
                             <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
                             <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-medium text-foreground">{pr.title}</p>
+                                <p className="text-[13px] font-semibold text-foreground">{pr.title}</p>
                                 <p className="mt-0.5 text-[11.5px] text-muted">
                                     #{pr.number} · {pr.sourceBranch} → {pr.targetBranch} · opened {pr.createdAt} by {pr.author}
                                 </p>

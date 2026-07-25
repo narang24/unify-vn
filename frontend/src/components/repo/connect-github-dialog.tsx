@@ -117,7 +117,7 @@ export function ConnectGithubDialog({
                                 >
                                     <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted" />
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-[13px] font-medium text-foreground">{r.fullName}</p>
+                                        <p className="truncate text-[13px] font-semibold text-foreground">{r.fullName}</p>
                                         {r.description && <p className="truncate text-[11.5px] text-muted">{r.description}</p>}
                                     </div>
                                     {r.private && <Lock className="h-3 w-3 shrink-0 text-muted" />}

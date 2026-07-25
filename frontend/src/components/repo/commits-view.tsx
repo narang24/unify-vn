@@ -41,10 +41,10 @@ export function CommitsView({ repo }: { repo?: ConnectedRepository }) {
 
   if (!connected) {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
+      <div className="flex h-full items-center justify-center p-6 text-center font-semibold">
         <div>
           <GitBranch className="mx-auto mb-2 h-8 w-8 text-muted" />
-          <p className="text-[13px] font-medium text-foreground">Sign in with GitHub to browse branches & commits.</p>
+          <p className="text-[13px] font-semibold text-foreground">Sign in with GitHub to browse branches & commits.</p>
           <p className="mt-1 text-[12px] text-muted">No token or webhook setup required — it&apos;s automatic once connected.</p>
         </div>
       </div>
@@ -62,8 +62,8 @@ export function CommitsView({ repo }: { repo?: ConnectedRepository }) {
               key={b.name}
               onClick={() => setActiveBranch(b.name)}
               className={cn(
-                "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-foreground/[0.06]",
-                b.name === activeBranch ? "bg-accent/10 font-medium text-accent" : "text-foreground",
+                "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-foreground/6",
+                b.name === activeBranch ? "bg-accent/10 font-semibold text-accent" : "text-foreground",
               )}
             >
               <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted" />
@@ -81,7 +81,7 @@ export function CommitsView({ repo }: { repo?: ConnectedRepository }) {
           {loading ? (
             <><Loader2 className="h-3 w-3 animate-spin" /> Loading commits…</>
           ) : (
-            <>Commits on <span className="font-medium text-foreground">{activeBranch}</span></>
+            <>Commits on <span className="font-semibold text-foreground">{activeBranch}</span></>
           )}
         </p>
         <div className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-panel">
@@ -95,10 +95,10 @@ export function CommitsView({ repo }: { repo?: ConnectedRepository }) {
             >
               <GitCommit className="h-4 w-4 shrink-0 text-muted" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-foreground">{c.message}</p>
+                <p className="truncate text-[13px] font-semibold text-foreground">{c.message}</p>
                 <p className="text-[11.5px] text-muted">{c.author} · {fmtDate(c.date)}</p>
               </div>
-              <code className="shrink-0 rounded bg-foreground/[0.06] px-1.5 py-0.5 font-mono text-[10.5px] text-muted">{c.shortSha}</code>
+              <code className="shrink-0 rounded bg-foreground/6 px-1.5 py-0.5 font-mono text-[10.5px] text-muted">{c.shortSha}</code>
             </motion.div>
           ))}
           {!loading && commits.length === 0 && (

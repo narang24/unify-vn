@@ -80,7 +80,7 @@ export function InvestigatePanel({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.22, ease: "easeOut" }}
-            className="relative ml-auto flex h-full w-full max-w-[520px] flex-col overflow-y-auto scroll-thin border-l border-border-subtle bg-panel shadow-2xl"
+            className="relative ml-auto flex h-full w-full max-w-130 flex-col overflow-y-auto scroll-thin border-l border-border-subtle bg-panel shadow-2xl"
           >
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border-subtle bg-panel px-4 py-3">
@@ -99,7 +99,7 @@ export function InvestigatePanel({
               </div>
               <button
                 onClick={onClose}
-                className="ml-2 rounded-md p-1.5 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+                className="ml-2 rounded-md p-1.5 text-muted hover:bg-foreground/6 hover:text-foreground"
                 aria-label="Close investigate panel"
               >
                 <X className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function InvestigatePanel({
                   {rca.ragSources.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Database className="h-3 w-3 shrink-0 text-muted" />
-                      <span className="text-[11px] font-medium text-muted">RAG sources:</span>
+                      <span className="text-[11px] font-semibold text-muted">RAG sources:</span>
                       {rca.ragSources.map((src) => (
                         <span
                           key={src}
@@ -171,14 +171,14 @@ export function InvestigatePanel({
             {rca && (
               <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-border-subtle bg-panel px-4 py-3">
                 {prNumber ? (
-                  <span className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[12px] font-medium text-emerald-500">
+                  <span className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[12px] font-semibold text-emerald-500">
                     <CheckCircle2 className="h-3.5 w-3.5" /> PR #{prNumber} drafted
                   </span>
                 ) : (
                   <button
                     id="investigate-panel-generate-pr"
                     onClick={onGeneratePR}
-                    className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-accent-foreground hover:bg-accent-soft"
+                    className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-accent-foreground hover:bg-accent-soft"
                   >
                     <GitPullRequest className="h-3.5 w-3.5" /> Generate Pull Request
                   </button>
@@ -186,14 +186,14 @@ export function InvestigatePanel({
                 <button
                   id="investigate-panel-ask-intelli"
                   onClick={() => onAskIntelli(rca)}
-                  className="flex items-center gap-1.5 rounded-lg border border-border-subtle px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-foreground/[0.06]"
+                  className="flex items-center gap-1.5 rounded-lg border border-border-subtle px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-foreground/6"
                 >
                   <Lightbulb className="h-3.5 w-3.5 text-accent" /> Ask Unify Intelli
                 </button>
                 <button
                   id="investigate-panel-reanalyze"
                   onClick={onReanalyze}
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-muted hover:bg-foreground/6 hover:text-foreground"
                 >
                   <RotateCcw className="h-3.5 w-3.5" /> Re-analyze
                 </button>
@@ -266,7 +266,7 @@ function WorkflowTimeline({ steps }: { steps: { step: number; label: string; det
               {s.step}
             </div>
             {i < steps.length - 1 && (
-              <div className="w-px flex-1 bg-gradient-to-b from-accent/20 to-transparent" style={{ minHeight: 20 }} />
+              <div className="w-px flex-1 bg-linear-to-b from-accent/20 to-transparent" style={{ minHeight: 20 }} />
             )}
           </div>
           {/* Content */}
@@ -285,7 +285,7 @@ function CodeBlock({ snippet }: { snippet: { filename: string; language: string;
     <div className="overflow-hidden rounded-lg border border-border-subtle bg-[#0d1117]">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
         <span className="font-mono text-[11px] text-[#8b949e]">{snippet.filename}</span>
-        <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-[#8b949e]">
+        <span className="rounded bg-white/6 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-[#8b949e]">
           {snippet.language}
         </span>
       </div>

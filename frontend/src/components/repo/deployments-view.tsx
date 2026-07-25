@@ -83,7 +83,7 @@ export function DeploymentsView({
   }
 
   return (
-    <div className="h-full overflow-y-auto scroll-thin p-4">
+    <div className="h-full overflow-y-auto scroll-thin p-4 font-semibold">
       {/* Repository-memory status bar */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <IndexBadge state={state?.index ?? "idle"} />
@@ -92,7 +92,7 @@ export function DeploymentsView({
         </p>
         <button
           onClick={() => incidents.triggerDeployment(repo.id)}
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-border-subtle px-2.5 py-1.5 text-[12px] font-medium text-foreground hover:bg-foreground/[0.06]"
+          className="ml-auto flex items-center gap-1.5 rounded-lg border border-border-subtle px-2.5 py-1.5 text-[12px] font-semibold text-foreground hover:bg-foreground/[0.06]"
         >
           <Rocket className="h-3.5 w-3.5" /> Sync deployments
         </button>
@@ -118,7 +118,7 @@ export function DeploymentsView({
 
         {deployments.length === 0 && (
           <div className="rounded-xl border border-dashed border-border-subtle py-10 text-center">
-            <p className="text-[13px] font-medium text-foreground">No deployments yet.</p>
+            <p className="text-[13px] font-semibold text-foreground">No deployments yet.</p>
             <p className="mt-1 text-[12px] text-muted">Trigger a deployment to see its history and status here.</p>
           </div>
         )}
@@ -195,8 +195,8 @@ function DeploymentRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-[13px] font-medium text-foreground">{dep.commitMessage}</p>
-          <span className="shrink-0 rounded bg-foreground/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-muted">
+          <p className="truncate text-[13px] font-semibold text-foreground">{dep.commitMessage}</p>
+          <span className="shrink-0 rounded bg-foreground/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-muted">
             {dep.environment}
           </span>
           {failed && (

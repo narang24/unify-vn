@@ -31,13 +31,13 @@ export function SelectionActionBar({
             <div className="h-4 w-px bg-white/15" />
             <button
               onClick={onAddToChat}
-              className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[12.5px] font-medium text-white/90 hover:bg-white/10"
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[12.5px] font-semibold text-white/90 hover:bg-white/10"
             >
               <MessageSquarePlus className="h-3.5 w-3.5" /> Add to Chat
             </button>
             <button
               onClick={onCreateWorkItem}
-              className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[12.5px] font-medium text-white/90 hover:bg-white/10"
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[12.5px] font-semibold text-white/90 hover:bg-white/10"
             >
               <ListPlus className="h-3.5 w-3.5" /> Create Work Item
             </button>

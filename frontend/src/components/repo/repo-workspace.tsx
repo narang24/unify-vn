@@ -71,7 +71,7 @@ export function RepoWorkspace({
     }
 
     return (
-        <div className="flex h-full">
+        <div className="flex h-full font-semibold">
             <div className="relative flex min-w-0 flex-1 flex-col">
                 {/* Repo header */}
                 <div className="flex items-center gap-2 border-b border-border-subtle bg-panel px-3 pt-3 pb-2 sm:px-5">
@@ -101,7 +101,7 @@ export function RepoWorkspace({
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ duration: 0.15 }}
                                 onClick={() => setAiOpen(true)}
-                                className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1.5 text-[12.5px] font-medium text-accent hover:bg-accent/20"
+                                className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1.5 text-[12.5px] font-semibold text-accent hover:bg-accent/20"
                             >
                                 <Lightbulb className="h-3.5 w-3.5" /> Ask Unify Intelli
                             </motion.button>
@@ -119,7 +119,7 @@ export function RepoWorkspace({
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "relative flex items-center gap-1.5 rounded-t-lg px-2.5 py-2 text-[12.5px] font-medium whitespace-nowrap sm:px-3",
+                                    "relative flex items-center gap-1.5 rounded-t-lg px-2.5 py-2 text-[12.5px] font-semibold whitespace-nowrap sm:px-3",
                                     isActive ? "text-accent" : "text-muted hover:text-foreground",
                                 )}
                             >
@@ -141,14 +141,14 @@ export function RepoWorkspace({
                         {selectMode ? (
                             <button
                                 onClick={exitSelectMode}
-                                className="flex items-center gap-1 rounded-md bg-danger/10 px-2.5 py-1 text-[12px] font-medium text-danger hover:bg-danger/20"
+                                className="flex items-center gap-1 rounded-md bg-danger/10 px-2.5 py-1 text-[12px] font-semibold text-danger hover:bg-danger/20"
                             >
                                 <X className="h-3 w-3" /> Cancel
                             </button>
                         ) : (
                             <button
                                 onClick={() => setSelectMode(true)}
-                                className="rounded-md px-2.5 py-1 text-[12px] font-medium text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+                                className="rounded-md px-2.5 py-1 text-[12px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground"
                             >
                                 Select
                             </button>

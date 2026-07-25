@@ -14,7 +14,7 @@ const ICONS = {
 export function ContextChip({ chip, onRemove }: { chip: ContextChipData; onRemove?: (id: string) => void }) {
     const Icon = ICONS[chip.type];
     return (
-        <span className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-border-subtle bg-panel-strong/40 px-2 py-1 text-[11.5px] font-medium text-foreground">
+        <span className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-border-subtle bg-panel-strong/40 px-2 py-1 text-[11.5px] font-semibold text-foreground">
             <Icon className="h-3 w-3 shrink-0 text-accent" />
             <span className="truncate">{chip.label}</span>
             {onRemove && (

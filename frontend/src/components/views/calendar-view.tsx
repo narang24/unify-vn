@@ -77,7 +77,7 @@ export function CalendarView({ items, onCreateWithDate }: CalendarViewProps) {
     d.getDate() === today.getDate();
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden font-semibold">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border-subtle bg-panel px-4 py-2.5">
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={prev}>
@@ -159,7 +159,7 @@ export function CalendarView({ items, onCreateWithDate }: CalendarViewProps) {
                     return (
                       <div
                         key={item.id}
-                        className="mb-0.5 truncate rounded px-1 py-0.5 text-[10.5px] font-medium text-white"
+                        className="mb-0.5 truncate rounded px-1 py-0.5 text-[10.5px] font-semibold text-white"
                         style={{ backgroundColor: cfg.color }}
                         title={item.title}
                       >

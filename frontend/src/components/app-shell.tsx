@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Reorder, useDragControls } from "framer-motion";
+import { motion, Reorder, useDragControls } from "framer-motion";
 import {
   LayoutGrid,
   Search,
@@ -21,6 +21,8 @@ import {
   ChevronRight,
   GripVertical,
   SquareArrowOutUpRight,
+  MoreVertical,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -300,21 +302,6 @@ function SidebarBody({
         </HoverBorderGradient>
       </div>
 
-      {/* Repositories */}
-      <div
-        className={cn("mt-3 rounded-lg p-0.5 transition-colors", draggingSection === "repo" && "drop-zone-active")}
-      >
-        <RepoSidebarSection
-          repositories={repositories}
-          activeRepoId={activeRepoId}
-          onSelectRepo={onSelectRepo}
-          onConnectRepo={onConnectRepo}
-          onReorder={onReorderRepos}
-          onDragStateChange={(d) => setDraggingSection(d ? "repo" : null)}
-          collapsed={collapsed}
-        />
-      </div>
-
       {/* Workspaces */}
       <div className="mt-3">
         <div className="flex items-center justify-between px-2.5">
@@ -371,6 +358,20 @@ function SidebarBody({
         )}
       </div>
 
+      {/* Repositories */}
+      <div
+        className={cn("mt-3 rounded-lg p-0.5 transition-colors", draggingSection === "repo" && "drop-zone-active")}
+      >
+        <RepoSidebarSection
+          repositories={repositories}
+          activeRepoId={activeRepoId}
+          onSelectRepo={onSelectRepo}
+          onConnectRepo={onConnectRepo}
+          onReorder={onReorderRepos}
+          onDragStateChange={(d) => setDraggingSection(d ? "repo" : null)}
+          collapsed={collapsed}
+        />
+      </div>
       {/* Bottom: Settings + Help */}
       <div className="mt-auto space-y-0.5 pt-3">
         <button
@@ -436,6 +437,11 @@ function WorkspaceRow({
   const controls = useDragControls();
   const [armed, setArmed] = React.useState(false);
   const armTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [expanded, setExpanded] = React.useState(active);
+
+  React.useEffect(() => {
+    if (active) setExpanded(true);
+  }, [active]);
 
   function handleEnter() {
     armTimer.current = setTimeout(() => setArmed(true), 1200);
@@ -447,7 +453,8 @@ function WorkspaceRow({
 
   return (
     <Reorder.Item value={ws} dragListener={false} dragControls={controls} className="list-none">
-      <div
+      <motion.div
+        layout="position"
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
         onPointerUp={onDragEnd}
@@ -459,21 +466,25 @@ function WorkspaceRow({
             controls.start(e);
           }}
         />
-        <button
-          onClick={() => onSelectWorkspace(ws.id)}
+        <motion.button
+          layout="position"
+          onClick={() => {
+            onSelectWorkspace(ws.id);
+            setExpanded(!expanded);
+          }}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-semibold hover:bg-foreground/[0.06]",
             active ? "bg-accent/10 text-accent" : "text-foreground",
           )}
         >
           <Layers3 className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{ws.name}</span>
-          <ChevronRight className={cn("ml-auto h-3 w-3 shrink-0 transition-transform", active && "rotate-90")} />
-        </button>
-      </div>
+          <motion.span layout="position" className="truncate flex-1">{ws.name}</motion.span>
+          <ChevronRight className={cn("ml-auto h-3 w-3 shrink-0 transition-transform", expanded && "rotate-90")} />
+        </motion.button>
+      </motion.div>
 
-      {active && (
-        <div className="ml-4 mt-0.5 border-l border-border-subtle pl-2">
+      {expanded && (
+        <div className="ml-4 mt-1.5 border-l-2 border-border-subtle pl-2 mb-1.5">
           <Reorder.Group
             axis="y"
             values={ws.spaces}
@@ -493,7 +504,7 @@ function WorkspaceRow({
           </Reorder.Group>
           <button
             onClick={onCreateSpace}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+            className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground"
           >
             <Plus className="h-3 w-3" /> Create space
           </button>
@@ -539,10 +550,18 @@ function SpaceRow({
             controls.start(e);
           }}
         />
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={onSelect}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelect();
+            }
+          }}
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-[12.5px] font-semibold hover:bg-foreground/[0.06]",
+            "group/tab flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-[12.5px] font-semibold hover:bg-foreground/[0.06]",
             active ? "bg-accent/10 text-accent" : "text-foreground",
           )}
         >
@@ -550,22 +569,36 @@ function SpaceRow({
               <img src="/kanban-sign.png" alt="Kanban" className="h-3.5 w-3.5 shrink-0 object-contain" />
             ) : sp.kind === "scrum" ? (
               <img src="/scrum-sign.png" alt="Scrum" className="h-3.5 w-3.5 shrink-0 object-contain" />
+            ) : sp.kind === "bugtracker" || sp.name === "Bug Tracker" ? (
+              <img src="/bug-sign.webp" alt="Bug Tracker" className="h-3.5 w-3.5 shrink-0 object-contain" />
+            ) : sp.kind === "custom" ? (
+              <img src="/custom-sign.png" alt="Custom" className="h-3.5 w-3.5 shrink-0 object-contain" />
             ) : (
               <Kanban className="h-3 w-3 shrink-0 text-muted" />
             )}
           <span className="truncate">{sp.name}</span>
           <BoardCapsule kind={sp.kind} className="ml-auto shrink-0" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleStar(sp.id); }}
-          aria-label={starred ? "Unstar space" : "Star space"}
-          className={cn(
-            "shrink-0 rounded p-1 text-muted hover:text-amber-500",
-            starred ? "opacity-100 text-amber-500" : "opacity-0 group-hover:opacity-100",
-          )}
-        >
-          <Star className={cn("h-3 w-3", starred && "fill-amber-500")} />
-        </button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-transparent opacity-0 transition-opacity hover:bg-foreground/[0.08] group-hover/tab:opacity-100"
+              >
+                <MoreVertical className="h-3.5 w-3.5 text-slate-500" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="min-w-[140px] p-1">
+              <DropdownMenuItem onClick={() => toggleStar(sp.id)} className="px-2 py-1 text-xs h-auto cursor-pointer">
+                {starred ? "Unstar Space" : "Star Space"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem className="px-2 py-1 text-xs h-auto cursor-pointer text-red-600 focus:bg-red-500/10 focus:text-red-600">
+                Delete Space
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </Reorder.Item>
   );

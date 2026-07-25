@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Mail, Check, X, Crown, Shield, User } from "lucide-react";
+import { UserPlus, Mail, Check, X, Crown, Shield, User, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 type Role = "viewer" | "editor" | "admin";
 
@@ -42,7 +43,7 @@ interface AddMembersDialogProps {
 export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogProps) {
   const [members, setMembers] = useState<Member[]>(SEED_MEMBERS);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("editor");
+  const [role, setRole] = useState<Role | null>(null);
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,6 +51,10 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes("@")) {
       setError("Enter a valid email address.");
+      return;
+    }
+    if (!role) {
+      setError("Please select a role.");
       return;
     }
     if (members.find((m) => m.email === trimmed)) {
@@ -109,7 +114,7 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
               </div>
               <div>
                 <h2 className="text-[14px] font-semibold text-foreground">Add Members</h2>
-                <p className="text-[11.5px] text-muted">{spaceName}</p>
+                <p className="text-[11.5px] font-semibold text-muted">{spaceName}</p>
               </div>
             </div>
             <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-foreground/[0.06]">
@@ -126,27 +131,27 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && handleInvite()}
-                className="pl-8 h-9 text-[13px]"
+                className="pl-8 h-9 text-[13px] font-semibold"
               />
             </div>
 
             {/* Role picker */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <button className="flex items-center gap-2 rounded-md border border-border-subtle px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-foreground/[0.06] h-9 shrink-0">
-                  {(() => {
-                    const cfg = ROLE_CONFIG[role];
-                    const Icon = cfg.icon;
-                    return <><Icon className={`h-3.5 w-3.5 ${cfg.color}`} />{cfg.label}</>;
-                  })()}
+                <button className="flex items-center gap-2 rounded-md border border-border-subtle px-2.5 py-1.5 text-[12.5px] font-semibold hover:bg-foreground/[0.06] h-9 shrink-0">
+                  {role ? ROLE_CONFIG[role].label : "Role"}
+                  <ChevronsUpDown className="h-3.5 w-3.5 text-muted" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 {(Object.entries(ROLE_CONFIG) as [Role, typeof ROLE_CONFIG[Role]][]).map(([r, cfg]) => {
-                  const Icon = cfg.icon;
+                  const isSelected = r === role;
                   return (
-                    <DropdownMenuItem key={r} onClick={() => setRole(r)}>
-                      <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
+                    <DropdownMenuItem 
+                      key={r} 
+                      onClick={() => setRole(isSelected ? null : r)} 
+                      className={cn("font-semibold", isSelected && "bg-accent/10 text-accent")}
+                    >
                       {cfg.label}
                     </DropdownMenuItem>
                   );
@@ -154,7 +159,7 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={handleInvite} size="sm" className="h-9 px-3" disabled={inviting}>
+            <Button onClick={handleInvite} size="sm" className="h-9 px-3" disabled={inviting || !role}>
               {inviting ? (
                 <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : (
@@ -184,16 +189,22 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
                   >
                     <Avatar name={m.name} size={32} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-foreground truncate">{m.name}</p>
-                      <p className="text-[11.5px] text-muted truncate">{m.email}</p>
+                      <p className="text-[13px] font-semibold text-foreground truncate">
+                        {m.name === "You" ? "You" : m.name}
+                      </p>
+                      {m.email && (
+                        <p className="text-[11.5px] font-semibold text-muted truncate">
+                          {m.email}
+                        </p>
+                      )}
                     </div>
                     {m.status === "pending" && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-semibold text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
                         Pending
                       </span>
                     )}
                     {m.status === "active" && (
-                      <span className="flex items-center gap-1 text-[10.5px] text-emerald-600">
+                      <span className="flex items-center gap-1 text-[10.5px] font-semibold text-emerald-600">
                         <Check className="h-3 w-3" /> Active
                       </span>
                     )}
@@ -202,17 +213,15 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
                     {m.id !== "m1" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger>
-                          <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] hover:bg-foreground/[0.06]">
+                          <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] font-semibold hover:bg-foreground/[0.06]">
                             <RoleIcon className={`h-3 w-3 ${roleCfg.color}`} />
                             {roleCfg.label}
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           {(Object.entries(ROLE_CONFIG) as [Role, typeof ROLE_CONFIG[Role]][]).map(([r, cfg]) => {
-                            const Icon = cfg.icon;
                             return (
-                              <DropdownMenuItem key={r} onClick={() => changeRole(m.id, r)}>
-                                <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
+                              <DropdownMenuItem key={r} onClick={() => changeRole(m.id, r)} className="font-semibold">
                                 {cfg.label}
                               </DropdownMenuItem>
                             );

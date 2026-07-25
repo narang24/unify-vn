@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, MoreHorizontal, ArrowRight, Pencil, Paperclip } from "lucide-react";
+import { Plus, MoreHorizontal, ArrowRight, Pencil, Paperclip, MoveRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -16,6 +16,17 @@ import { DEFAULT_COLUMNS, WORK_ITEM_TYPES, type BoardColumn, type SpaceWorkItem 
 import { cn } from "@/lib/utils";
 
 export type BoardWorkItem = SpaceWorkItem;
+
+function getStatusStyles(statusLabel: string) {
+  const upper = statusLabel.toUpperCase();
+  const base = "rounded-md px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide shadow-sm text-black";
+  
+  if (upper === "IN PROGRESS") return cn(base, "bg-blue-300");
+  if (upper === "TO DO") return cn(base, "bg-slate-200");
+  if (upper === "DONE") return cn(base, "bg-green-300");
+  if (upper === "IN REVIEW") return cn(base, "bg-orange-300");
+  return cn(base, "bg-[#E6C998]");
+}
 
 export function BoardView({
   items,
@@ -33,20 +44,42 @@ export function BoardView({
   onAddColumn?: (label: string) => void;
 }) {
   const [dragItem, setDragItem] = React.useState<string | null>(null);
+  const [dragSourceCol, setDragSourceCol] = React.useState<string | null>(null);
   const [overCol, setOverCol] = React.useState<string | null>(null);
   const [statusDialogOpen, setStatusDialogOpen] = React.useState(false);
+
+  const isDragging = dragItem !== null;
+
+  // Find the source column label
+  const sourceLabel = React.useMemo(() => {
+    if (!dragSourceCol) return "";
+    return columns.find((c) => c.id === dragSourceCol)?.label ?? dragSourceCol;
+  }, [dragSourceCol, columns]);
+
+  function handleDragStart(itemId: string, fromCol: string) {
+    setDragItem(itemId);
+    setDragSourceCol(fromCol);
+  }
 
   function handleDrop(colId: string) {
     if (dragItem) onMove(dragItem, colId);
     setDragItem(null);
+    setDragSourceCol(null);
+    setOverCol(null);
+  }
+
+  function handleDragEnd() {
+    setDragItem(null);
+    setDragSourceCol(null);
     setOverCol(null);
   }
 
   return (
-    <div className="flex h-full items-start gap-3 overflow-x-auto overflow-y-auto scroll-thin p-4">
+    <div className="flex h-full items-start gap-3 overflow-x-auto overflow-y-auto scroll-thin p-4 font-semibold">
       {columns.map((col) => {
         const colItems = items.filter((i) => i.status === col.id);
-        const isOver = overCol === col.id && dragItem !== null;
+        const isOver = overCol === col.id && isDragging && dragSourceCol !== col.id;
+        const isSource = isDragging && dragSourceCol === col.id;
         return (
           <div
             key={col.id}
@@ -59,17 +92,37 @@ export function BoardView({
             }}
             onDrop={() => handleDrop(col.id)}
             className={cn(
-              "flex w-72 shrink-0 flex-col self-start rounded-xl border bg-panel-strong/40 p-2 transition-colors",
-              isOver ? "border-accent bg-accent/[0.06]" : "border-transparent",
+              "flex w-72 shrink-0 flex-col self-start rounded-xl border-[3px] p-3 transition-all duration-200",
+              isOver
+                ? "border-teal-700 bg-teal-800/20 shadow-[inset_0_1px_12px_rgba(0,128,128,0.12)]"
+                : isSource
+                  ? "border-dashed border-teal-600/40 bg-[#e6f4f3]/40"
+                  : "border-transparent bg-[#e6f4f3]/30",
             )}
           >
+            {/* Column header — shows transition badge when dragging */}
             <div className="mb-2 flex items-center justify-between px-1.5 pt-1">
-              <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
-                {col.label}
-                <span className="rounded-full bg-foreground/[0.08] px-1.5 py-0.5 text-[10.5px] text-muted">
-                  {colItems.length}
-                </span>
-              </div>
+              {isSource ? (
+                /* Source column: "Transition to..." */
+                <div className="flex h-7 w-full items-center justify-center rounded-lg bg-teal-700 text-[11.5px] font-semibold text-white">
+                  Transition to…
+                </div>
+              ) : isOver ? (
+                /* Target column: "SOURCE → TARGET" */
+                <div className="flex h-7 w-full items-center justify-center gap-2 text-muted">
+                  <span className={getStatusStyles(sourceLabel)}>{sourceLabel}</span>
+                  <MoveRight className="h-4 w-4 text-teal-600" />
+                  <span className={getStatusStyles(col.label)}>{col.label}</span>
+                </div>
+              ) : (
+                /* Default header */
+                <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
+                  {col.label}
+                  <span className="rounded-md bg-foreground/8 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
+                    {colItems.length}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 px-0.5">
@@ -82,11 +135,8 @@ export function BoardView({
                     onMove={onMove}
                     onEdit={onEdit}
                     dragging={dragItem === item.id}
-                    onDragStart={() => setDragItem(item.id)}
-                    onDragEnd={() => {
-                      setDragItem(null);
-                      setOverCol(null);
-                    }}
+                    onDragStart={() => handleDragStart(item.id, col.id)}
+                    onDragEnd={handleDragEnd}
                   />
                 ))}
               </AnimatePresence>
@@ -94,7 +144,7 @@ export function BoardView({
 
             <button
               onClick={() => onCreate(col.id)}
-              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-semibold text-muted hover:bg-foreground/6 hover:text-foreground"
             >
               <Plus className="h-3.5 w-3.5" /> Create
             </button>
@@ -161,16 +211,16 @@ function WorkItemCard({
         }
       }}
       className={cn(
-        "group cursor-pointer rounded-lg border border-border-subtle bg-panel p-2.5 shadow-sm transition-shadow hover:border-accent/30 hover:shadow-md active:cursor-grabbing",
+        "group cursor-pointer rounded-lg border border-border-subtle bg-panel p-3 shadow-sm transition-shadow hover:border-accent/30 hover:shadow-md active:cursor-grabbing",
         dragging && "ring-2 ring-accent",
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[13px] font-medium leading-snug text-foreground">{item.title}</p>
+        <p className="text-[13px] font-semibold leading-snug text-foreground">{item.title}</p>
         <div data-no-card-click className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <button className="rounded-md p-0.5 text-muted hover:bg-foreground/[0.06]" aria-label="Move">
+              <button className="rounded-md p-0.5 text-muted hover:bg-foreground/6" aria-label="Move">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
@@ -181,7 +231,7 @@ function WorkItemCard({
                 </DropdownMenuItem>
               )}
               {columns.filter((c) => c.id !== item.status).map((c) => (
-                <DropdownMenuItem key={c.id} onClick={(e) => { e.stopPropagation(); onMove(item.id, c.id); }}>
+                <DropdownMenuItem key={c.id} onClick={() => onMove(item.id, c.id)}>
                   <ArrowRight className="h-3.5 w-3.5" /> Move to {c.label}
                 </DropdownMenuItem>
               ))}
@@ -191,24 +241,24 @@ function WorkItemCard({
       </div>
 
       {item.label && (
-        <span className="mt-1.5 inline-block rounded bg-foreground/[0.06] px-1.5 py-0.5 text-[10.5px] text-muted">
+        <span className="mt-1.5 inline-block rounded-md bg-foreground/6 px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
           {item.label}
         </span>
       )}
 
       <div className="mt-2 flex items-center justify-between">
-        <Badge style={{ color: typeConfig.color, background: typeConfig.bg }} className="gap-1">
+        <Badge style={{ color: typeConfig.color, background: typeConfig.bg }} className="gap-1 rounded-md px-2 py-0.5 font-semibold">
           <Icon className="h-3 w-3" style={{ color: typeConfig.color }} />
           {typeConfig.label}
         </Badge>
         <div className="flex items-center gap-1.5">
           {item.attachments && item.attachments.length > 0 && (
-            <span className="flex items-center gap-0.5 text-[10.5px] text-muted">
+            <span className="flex items-center gap-0.5 text-[10.5px] font-semibold text-muted">
               <Paperclip className="h-3 w-3" />
               {item.attachments.length}
             </span>
           )}
-          {item.dueDate && <span className="text-[10.5px] text-muted">{formatDue(item.dueDate)}</span>}
+          {item.dueDate && <span className="text-[10.5px] font-semibold text-muted">{formatDue(item.dueDate)}</span>}
           {item.assignee && <Avatar name={item.assignee} size={20} />}
         </div>
       </div>

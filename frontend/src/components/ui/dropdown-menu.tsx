@@ -48,10 +48,12 @@ export function DropdownMenuContent({
   children,
   align = "end",
   className,
+  onClick,
 }: {
   children: React.ReactNode;
   align?: "start" | "end";
   className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   const ctx = React.useContext(DropdownContext)!;
   return (
@@ -67,6 +69,7 @@ export function DropdownMenuContent({
             align === "end" ? "right-0" : "left-0",
             className,
           )}
+          onClick={onClick}
         >
           {children}
         </motion.div>
@@ -82,15 +85,15 @@ export function DropdownMenuItem({
   destructive,
 }: {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
   className?: string;
   destructive?: boolean;
 }) {
   const ctx = React.useContext(DropdownContext)!;
   return (
     <button
-      onClick={() => {
-        onClick?.();
+      onClick={(e) => {
+        onClick?.(e);
         ctx.setOpen(false);
       }}
       className={cn(
@@ -104,6 +107,6 @@ export function DropdownMenuItem({
   );
 }
 
-export function DropdownMenuSeparator() {
-  return <div className="my-1 h-px bg-border-subtle" />;
+export function DropdownMenuSeparator({ className }: { className?: string }) {
+  return <div className={cn("my-1 h-px bg-border-subtle", className)} />;
 }

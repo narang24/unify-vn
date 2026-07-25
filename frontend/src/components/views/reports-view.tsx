@@ -120,8 +120,8 @@ function BarChartSVG({
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 140 }}>
       {/* Y ticks */}
-      {yTicks.map((t) => (
-        <React.Fragment key={t}>
+      {yTicks.map((t, i) => (
+        <React.Fragment key={i}>
           <line
             x1={PAD_L}
             x2={W}
@@ -202,7 +202,7 @@ function WorkItemTable({ items, category }: { items: SpaceWorkItem[]; category: 
         <span className={cn("rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold", categoryColor)}>
           {categoryLabel}
         </span>
-        <span className="rounded-full bg-foreground/[0.06] px-2 py-0.5 text-[10.5px] font-semibold text-muted">
+        <span className="rounded-full bg-foreground/6 px-2 py-0.5 text-[10.5px] font-semibold text-muted">
           {items.length}
         </span>
         <div className="relative ml-auto">
@@ -241,7 +241,7 @@ function WorkItemTable({ items, category }: { items: SpaceWorkItem[]; category: 
                 const TypeIcon = typeCfg.icon;
                 const statusCol = DEFAULT_COLUMNS.find((c) => c.id === item.status);
                 return (
-                  <tr key={item.id} className="hover:bg-foreground/[0.03] transition-colors">
+                  <tr key={item.id} className="hover:bg-foreground/3 transition-colors">
                     <td className="px-4 py-2.5 font-mono font-medium text-accent">
                       {item.id.toUpperCase().slice(0, 6)}
                     </td>
@@ -256,7 +256,7 @@ function WorkItemTable({ items, category }: { items: SpaceWorkItem[]; category: 
                         <span style={{ color: "#f59e0b" }}>≡</span> Medium
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 max-w-[200px] truncate text-foreground">{item.title}</td>
+                    <td className="max-w-50 px-4 py-2.5 truncate text-foreground">{item.title}</td>
                     <td className="px-4 py-2.5 text-muted">{item.assignee ?? "Unassigned"}</td>
                     <td className="px-4 py-2.5">
                       <span className={cn(
@@ -286,7 +286,7 @@ function WorkItemTable({ items, category }: { items: SpaceWorkItem[]; category: 
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="rounded-md p-1 text-muted hover:bg-foreground/[0.06] disabled:opacity-40"
+              className="rounded-md p-1 text-muted hover:bg-foreground/6 disabled:opacity-40"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
@@ -296,7 +296,7 @@ function WorkItemTable({ items, category }: { items: SpaceWorkItem[]; category: 
                 onClick={() => setPage(i)}
                 className={cn(
                   "h-6 w-6 rounded-md text-[11.5px] font-medium",
-                  i === page ? "bg-accent text-white" : "text-muted hover:bg-foreground/[0.06]"
+                  i === page ? "bg-accent text-white" : "text-muted hover:bg-foreground/6"
                 )}
               >
                 {i + 1}
@@ -305,7 +305,7 @@ function WorkItemTable({ items, category }: { items: SpaceWorkItem[]; category: 
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page === totalPages - 1}
-              className="rounded-md p-1 text-muted hover:bg-foreground/[0.06] disabled:opacity-40"
+              className="rounded-md p-1 text-muted hover:bg-foreground/6 disabled:opacity-40"
             >
               <ChevronRight2 className="h-3.5 w-3.5" />
             </button>
@@ -369,12 +369,12 @@ export function ReportsView({ items, spaceName, onOpenIntelli }: ReportsViewProp
   }
 
   return (
-    <div className="h-full overflow-y-auto scroll-thin p-5 space-y-5">
+    <div className="h-full overflow-y-auto scroll-thin p-5 space-y-5 font-semibold">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-[15px] font-semibold text-foreground">Reports</h2>
-          <p className="mt-0.5 text-[12px] text-muted">Analytics and insights for <span className="font-medium text-foreground">{spaceName}</span></p>
+          <p className="mt-0.5 text-[12px] text-muted">Analytics and insights for <span className="font-semibold text-foreground">{spaceName}</span></p>
         </div>
         <div className="flex items-center gap-2">
           {/* Unify Intelli Insights button */}
@@ -474,7 +474,7 @@ export function ReportsView({ items, spaceName, onOpenIntelli }: ReportsViewProp
                   key={p}
                   onClick={() => setPeriod(p)}
                   className={cn(
-                    "rounded-md px-2.5 py-1 text-[11.5px] font-medium capitalize transition-colors",
+                    "rounded-md px-2.5 py-1 text-[11.5px] font-semibold capitalize transition-colors",
                     period === p
                       ? "bg-accent text-white shadow-sm"
                       : "text-muted hover:text-foreground"

@@ -2,8 +2,15 @@
 
 import * as React from "react";
 import { Reorder, useDragControls } from "framer-motion";
-import { Plus, GitBranch, FolderGit2, GripVertical, Star } from "lucide-react";
+import { Plus, GitBranch, FolderGit2, GripVertical, Star, MoreVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConnectGithubDialog } from "@/components/repo/connect-github-dialog";
 import { useIncidents } from "@/lib/incident-context";
 import { usePrefs } from "@/lib/prefs-context";
@@ -38,7 +45,7 @@ export function RepoSidebarSection({
                 <button
                     onClick={() => setDialogOpen(true)}
                     aria-label="Connect repository"
-                    className={cn("rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground", collapsed && "mx-auto")}
+                    className={cn("rounded-md p-1 text-muted hover:bg-foreground/6 hover:text-foreground", collapsed && "mx-auto")}
                 >
                     <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -52,7 +59,7 @@ export function RepoSidebarSection({
                             onClick={() => onSelectRepo(repo.id)}
                             className={cn(
                                 "relative flex w-full items-center justify-center rounded-lg py-1.5",
-                                repo.id === activeRepoId ? "bg-accent/10 text-accent" : "text-foreground hover:bg-foreground/[0.06]",
+                                repo.id === activeRepoId ? "bg-accent/10 text-accent" : "text-foreground hover:bg-foreground/6",
                             )}
                             title={repo.fullName}
                         >
@@ -82,7 +89,7 @@ export function RepoSidebarSection({
                         />
                     ))}
                     {repositories.length === 0 && (
-                        <p className="px-2.5 py-1 text-[11.5px] text-muted">No repositories connected yet.</p>
+                        <p className="px-2.5 py-1 text-[11.5px] font-semibold text-muted">No repositories connected yet.</p>
                     )}
                 </Reorder.Group>
             )}
@@ -95,7 +102,7 @@ export function RepoSidebarSection({
 function RepoGlyph({ repo }: { repo: ConnectedRepository }) {
     return (
         <span
-            className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded"
+            className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded"
             style={{ backgroundColor: `${repo.avatarColor}22` }}
         >
             {repo.provider === "github" ? (
@@ -137,7 +144,7 @@ function RepoRow({
                     setArmed(false);
                 }}
                 onPointerUp={onDragEnd}
-                className={cn("group flex items-center gap-1 rounded-lg", armed && "drag-armed")}
+                className={cn("group/tab group flex items-center gap-1 rounded-lg pr-1", armed && "drag-armed")}
             >
                 <span
                     onPointerDown={(e) => {
@@ -152,7 +159,7 @@ function RepoRow({
                 <button
                     onClick={onSelect}
                     className={cn(
-                        "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-semibold hover:bg-foreground/[0.06]",
+                        "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-semibold hover:bg-foreground/6",
                         active ? "bg-accent/10 text-accent" : "text-foreground",
                     )}
                     title={repo.fullName}
@@ -165,16 +172,25 @@ function RepoRow({
                         </span>
                     )}
                 </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); toggleStar(repo.id); }}
-                    aria-label={starred ? "Unstar repository" : "Star repository"}
-                    className={cn(
-                        "shrink-0 rounded p-1 text-muted hover:text-amber-500",
-                        starred ? "opacity-100 text-amber-500" : "opacity-0 group-hover:opacity-100",
-                    )}
-                >
-                    <Star className={cn("h-3 w-3", starred && "fill-amber-500")} />
-                </button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger>
+                        <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-transparent opacity-0 transition-opacity hover:bg-foreground/8 group-hover/tab:opacity-100"
+                        >
+                            <MoreVertical className="h-3.5 w-3.5 text-slate-500" />
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="min-w-35 p-1">
+                        <DropdownMenuItem onClick={() => toggleStar(repo.id)} className="px-2 py-1 text-xs h-auto cursor-pointer">
+                            {starred ? "Unstar Repository" : "Star Repository"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1" />
+                        <DropdownMenuItem className="px-2 py-1 text-xs h-auto cursor-pointer text-red-600 focus:bg-red-500/10 focus:text-red-600">
+                            Delete Repository
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </Reorder.Item>
     );

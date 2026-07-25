@@ -65,7 +65,7 @@ export function AiSidebar({
                     animate={{ width: "min(360px, 100vw)", opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                    className="fixed inset-y-0 right-0 z-40 flex h-full shrink-0 flex-col overflow-hidden border-l border-border-subtle bg-panel sm:static sm:z-auto"
+                    className="fixed inset-y-0 right-0 z-40 flex h-full shrink-0 flex-col overflow-hidden border-l border-border-subtle bg-panel font-semibold sm:static sm:z-auto"
                 >
                     <div className="flex h-full shrink-0 flex-col" style={{ width: "min(360px, 100vw)" }}>
                         {/* Header */}
@@ -80,14 +80,14 @@ export function AiSidebar({
                             {onOpenFullWorkspace && (
                                 <button
                                     onClick={onOpenFullWorkspace}
-                                    className="rounded-md p-1 text-muted hover:bg-foreground/[0.06] hover:text-foreground"
+                                    className="rounded-md p-1 text-muted hover:bg-foreground/6 hover:text-foreground"
                                     aria-label="Open full Unify Intelli workspace"
                                     title="Open full Unify Intelli workspace"
                                 >
                                     <ExternalLink className="h-3.5 w-3.5" />
                                 </button>
                             )}
-                            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-foreground/[0.06]" aria-label="Close">
+                            <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-foreground/6" aria-label="Close">
                                 <X className="h-4 w-4" />
                             </button>
                         </div>

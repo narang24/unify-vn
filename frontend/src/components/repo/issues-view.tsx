@@ -47,7 +47,7 @@ export function IssuesView({
     }, [repo]);
 
     return (
-        <div className="h-full overflow-y-auto scroll-thin p-4">
+        <div className="h-full overflow-y-auto scroll-thin p-4 font-semibold">
             <p className="mb-3 flex items-center gap-1.5 text-[12px] text-muted">
                 {loading ? (
                     <><Loader2 className="h-3 w-3 animate-spin" /> Loading issues…</>
@@ -86,14 +86,14 @@ export function IssuesView({
                                 <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-purple-500" />
                             )}
                             <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-medium text-foreground">{issue.title}</p>
+                                <p className="text-[13px] font-semibold text-foreground">{issue.title}</p>
                                 <p className="mt-0.5 text-[11.5px] text-muted">
                                     #{issue.number} opened {fmtDate(issue.createdAt)} by {issue.author}
                                 </p>
                                 {issue.labels.length > 0 && (
                                     <div className="mt-1.5 flex flex-wrap gap-1">
                                         {issue.labels.map((l) => (
-                                            <span key={l} className={cn("rounded-full px-1.5 py-0.5 text-[10.5px] font-medium", "bg-accent/10 text-accent")}>
+                                            <span key={l} className={cn("rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold", "bg-accent/10 text-accent")}>
                                                 {l}
                                             </span>
                                         ))}

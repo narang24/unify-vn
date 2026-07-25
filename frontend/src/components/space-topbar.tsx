@@ -44,7 +44,7 @@ import { EditWorkItemDialog, type WorkItemPayload } from "@/components/edit-work
 import { BoardIntelliSidebar } from "@/components/board-intelli-sidebar";
 import { toast } from "@/lib/use-toast";
 import { cn } from "@/lib/utils";
-import { DEFAULT_COLUMNS, type BoardColumn, type BoardKind, type SpaceWorkItem } from "@/lib/work-item-types";
+import { DEFAULT_COLUMNS, type BoardColumn, type BoardKind, type SpaceWorkItem, type Sprint } from "@/lib/work-item-types";
 import type { ConnectedRepository } from "@/lib/repo-types";
 
 export type SpaceView = "summary" | "list" | "board" | "timeline" | "calendar" | "backlog" | "reports";
@@ -65,6 +65,7 @@ interface SpaceTopbarProps {
   boardType: BoardKind;
   columns?: BoardColumn[];
   items: SpaceWorkItem[];
+  sprints?: import("@/lib/work-item-types").Sprint[];
   pinned?: boolean;
   currentUser: { fullName?: string | null; email: string } | null;
   connectedRepo?: ConnectedRepository | null;
@@ -81,6 +82,11 @@ interface SpaceTopbarProps {
   onPinSpace?: () => void;
   onDeleteSpace?: () => void;
   onCreateBacklog: (target: "sprint" | "backlog") => void;
+  onCreateSprint?: (payload: import("@/components/create-sprint-dialog").SprintPayload) => void;
+  onEditSprint?: (id: string, payload: Partial<import("@/lib/work-item-types").Sprint>) => void;
+  onDeleteSprint?: (id: string) => void;
+  onStartSprint?: (id: string) => void;
+  onCompleteSprint?: (id: string) => void;
   initialAiChanges?: WorkItemPayload | null;
 }
 
@@ -90,6 +96,7 @@ export function SpaceTopbar({
   boardType,
   columns = DEFAULT_COLUMNS,
   items,
+  sprints,
   pinned,
   currentUser,
   connectedRepo,
@@ -106,6 +113,11 @@ export function SpaceTopbar({
   onPinSpace,
   onDeleteSpace,
   onCreateBacklog,
+  onCreateSprint,
+  onEditSprint,
+  onDeleteSprint,
+  onStartSprint,
+  onCompleteSprint,
   initialAiChanges,
 }: SpaceTopbarProps) {
   const isScrum = boardType === "scrum";
@@ -177,40 +189,40 @@ export function SpaceTopbar({
         {/* Row 1: space name + right actions */}
         <div className="flex items-center gap-2 px-5 pt-3 pb-2">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-[11px] font-bold text-accent-foreground">
-              {spaceName[0]?.toUpperCase() ?? "S"}
-            </div>
+            {boardType === "kanban" ? (
+              <img src="/kanban-sign.png" alt="Kanban" className="h-6 w-6 shrink-0 object-contain" />
+            ) : boardType === "scrum" ? (
+              <img src="/scrum-sign.png" alt="Scrum" className="h-6 w-6 shrink-0 object-contain" />
+            ) : boardType === "bugtracker" || spaceName === "Bug Tracker" ? (
+              <img src="/bug-sign.webp" alt="Bug Tracker" className="h-6 w-6 shrink-0 object-contain" />
+            ) : boardType === "custom" ? (
+              <img src="/custom-sign.png" alt="Custom" className="h-6 w-6 shrink-0 object-contain" />
+            ) : (
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-[11px] font-bold text-accent-foreground">
+                {spaceName[0]?.toUpperCase() ?? "S"}
+              </div>
+            )}
             <h1 className="truncate text-[15px] font-bold text-foreground">{spaceName}</h1>
             <BoardCapsule kind={boardType} className="shrink-0" />
-            {workspaceName && <span className="hidden text-[12px] text-muted sm:inline">· {workspaceName}</span>}
+            {workspaceName && <span className="hidden text-[12px] font-semibold text-muted sm:inline">| {workspaceName}</span>}
           </div>
 
           {/* Right: action buttons */}
           <div className="ml-auto flex items-center gap-1.5">
             <AvatarCircles names={memberNames} size={24} className="mr-0.5" />
 
-            {/* Unify Intelli Insights — prominent */}
-            <HoverBorderGradient
-              onClick={() => handleOpenIntelli()}
-              active={intelliOpen}
-              className="group hidden h-8 items-center gap-1.5 px-3 text-[12px] sm:flex"
-            >
-              <Sparkles className="h-3.5 w-3.5 group-hover:text-white dark:group-hover:text-[#2f9aa6]" />
-              Unify Intelli Insights
-            </HoverBorderGradient>
-
-            <Button variant="outline" size="sm" className="hidden h-8 gap-1.5 text-[12px] sm:inline-flex" onClick={() => setMembersOpen(true)}>
+            <Button variant="outline" size="sm" className="hidden h-8 px-5 gap-1.5 text-[12px] sm:inline-flex" onClick={() => setMembersOpen(true)}>
               <UserPlus className="h-3.5 w-3.5" />
               <span>Add Members</span>
             </Button>
 
             {connectedRepo ? (
-              <Button variant="outline" size="sm" className="hidden h-8 gap-1.5 text-[12px] sm:inline-flex" onClick={() => onViewRepo?.(connectedRepo.id)}>
+              <Button variant="outline" size="sm" className="hidden h-8 px-5 gap-1.5 text-[12px] sm:inline-flex" onClick={() => onViewRepo?.(connectedRepo.id)}>
                 <Eye className="h-3.5 w-3.5" />
                 <span>View Repo</span>
               </Button>
             ) : (
-              <Button variant="outline" size="sm" className="hidden h-8 gap-1.5 text-[12px] sm:inline-flex" onClick={() => setRepoOpen(true)}>
+              <Button variant="outline" size="sm" className="hidden h-8 px-5 gap-1.5 text-[12px] sm:inline-flex" onClick={() => setRepoOpen(true)}>
                 <GitBranch className="h-3.5 w-3.5" />
                 <span>Connect Repo</span>
               </Button>
@@ -297,7 +309,19 @@ export function SpaceTopbar({
             className="h-full"
           >
             {activeView === "summary" && <SummaryView items={items} spaceName={spaceName} />}
-            {activeView === "list" && <ListView items={items} onStatusChange={onMove} />}
+            {activeView === "list" && (
+              <ListView 
+                items={items} 
+                onStatusChange={onMove} 
+                isScrum={isScrum}
+                sprints={sprints}
+                onCreateSprint={onCreateSprint}
+                onEditSprint={onEditSprint}
+                onDeleteSprint={onDeleteSprint}
+                onStartSprint={onStartSprint}
+                onCompleteSprint={onCompleteSprint}
+              />
+            )}
             {activeView === "board" && (
               <BoardView
                 items={items}

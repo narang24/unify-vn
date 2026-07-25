@@ -71,13 +71,13 @@ export function TimelineView({ items }: TimelineViewProps) {
   const LABEL_W = 200;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col font-semibold">
       {/* Controls */}
       <div className="flex items-center gap-2 border-b border-border-subtle bg-panel px-4 py-2.5">
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOffsetMonths((o) => o - 1)}>
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
-        <span className="text-[13px] font-medium text-foreground min-w-[140px] text-center">
+        <span className="text-[13px] font-semibold text-foreground min-w-[140px] text-center">
           {new Date(baseYear, baseMonth).toLocaleDateString("en", { month: "long", year: "numeric" })}
           {MONTHS_SHOWN > 1 &&
             ` – ${new Date(baseYear, baseMonth + MONTHS_SHOWN - 1).toLocaleDateString("en", { month: "long", year: "numeric" })}`}
@@ -210,7 +210,7 @@ export function TimelineView({ items }: TimelineViewProps) {
                     }}
                   >
                     <div
-                      className="flex h-full w-full items-center gap-1.5 rounded-md px-2 text-[11px] font-medium text-white shadow-sm truncate"
+                      className="flex h-full w-full items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold text-white shadow-sm truncate"
                       style={{ backgroundColor: cfg.color }}
                       title={`${item.title} · ${statusLabel}`}
                     >

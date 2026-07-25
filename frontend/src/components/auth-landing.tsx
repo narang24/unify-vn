@@ -21,6 +21,8 @@ import { DEFAULT_COLUMNS, type BoardColumn, type BoardKind, type SpaceWorkItem, 
 import type { ConnectedRepository } from "@/lib/repo-types";
 import * as api from "@/lib/api";
 import type { ApiSpace, ApiWorkItem, ApiRepository } from "@/lib/api";
+import { type Sprint } from "@/lib/work-item-types";
+import type { SprintPayload } from "@/components/create-sprint-dialog";
 
 type WorkItem = SpaceWorkItem;
 
@@ -30,6 +32,7 @@ type Space = {
   kind: BoardKind;
   columns: BoardColumn[];
   workItems: WorkItem[];
+  sprints?: Sprint[];
   pinned?: boolean;
   repoId?: string | null;
 };
@@ -57,6 +60,7 @@ function seededWorkspace(): Workspace {
         workItems: [
           { id: uid("wi"), title: "Bug Resolver", type: "bug", status: "inprogress", assignee: "VN", dueDate: "2026-07-23" },
         ],
+        sprints: [],
       },
     ],
   };
@@ -70,6 +74,7 @@ function mapApiSpace(s: ApiSpace): Space {
     kind: s.kind,
     columns: s.columns?.length ? s.columns : DEFAULT_COLUMNS.map((c) => ({ ...c })),
     workItems: [],
+    sprints: [],
     pinned: s.pinned,
     repoId: s.repositoryId,
   };
@@ -85,6 +90,7 @@ function mapApiWorkItem(w: ApiWorkItem): WorkItem {
     description: w.description,
     label: w.label,
     epicId: w.epicId,
+    sprintId: (w as any).sprintId ?? null,
     attachments: w.attachments ?? [],
   };
 }
@@ -473,6 +479,76 @@ export default function DashboardPage() {
     toast({ title: "Status added", description: label, variant: "success" });
   }
 
+  // ── Sprints ─────────────────────────────────────────────────────────────
+  function createSprint(payload: SprintPayload) {
+    if (!activeWorkspaceId || !activeSpaceId) return;
+    const newSprint: Sprint = {
+      id: uid("spr"),
+      ...payload,
+    };
+    setWorkspaces((all) =>
+      all.map((ws) =>
+        ws.id !== activeWorkspaceId
+          ? ws
+          : {
+              ...ws,
+              spaces: ws.spaces.map((sp) =>
+                sp.id !== activeSpaceId
+                  ? sp
+                  : { ...sp, sprints: [...(sp.sprints || []), newSprint] },
+              ),
+            },
+      ),
+    );
+  }
+
+  function editSprint(sprintId: string, payload: Partial<Sprint>) {
+    if (!activeWorkspaceId || !activeSpaceId) return;
+    setWorkspaces((all) =>
+      all.map((ws) =>
+        ws.id !== activeWorkspaceId
+          ? ws
+          : {
+              ...ws,
+              spaces: ws.spaces.map((sp) =>
+                sp.id !== activeSpaceId
+                  ? sp
+                  : {
+                      ...sp,
+                      sprints: (sp.sprints || []).map((s) => (s.id === sprintId ? { ...s, ...payload } : s)),
+                    },
+              ),
+            },
+      ),
+    );
+  }
+
+  function deleteSprint(sprintId: string) {
+    if (!activeWorkspaceId || !activeSpaceId) return;
+    setWorkspaces((all) =>
+      all.map((ws) =>
+        ws.id !== activeWorkspaceId
+          ? ws
+          : {
+              ...ws,
+              spaces: ws.spaces.map((sp) =>
+                sp.id !== activeSpaceId
+                  ? sp
+                  : { ...sp, sprints: (sp.sprints || []).filter((s) => s.id !== sprintId) },
+              ),
+            },
+      ),
+    );
+  }
+
+  function startSprint(sprintId: string) {
+    editSprint(sprintId, { status: "active" });
+  }
+
+  function completeSprint(sprintId: string) {
+    editSprint(sprintId, { status: "completed" });
+  }
+
   function togglePinSpace(spaceId: string) {
     let nextPinned = false;
     setWorkspaces((all) =>
@@ -816,6 +892,7 @@ export default function DashboardPage() {
           boardType={activeSpace.kind}
           columns={activeSpace.columns ?? DEFAULT_COLUMNS}
           items={activeSpace.workItems}
+          sprints={activeSpace.sprints ?? []}
           pinned={!!activeSpace.pinned}
           currentUser={user}
           connectedRepo={activeSpaceRepo}
@@ -843,10 +920,15 @@ export default function DashboardPage() {
           onDeleteSpace={() => deleteSpace(activeSpace.id)}
           onCreateBacklog={(target) => {
             setEditingItem(null);
-            setItemTargetStatus(target === "sprint" ? "inprogress" : "todo");
+            setItemTargetStatus(target);
             setItemDefaultDue(null);
             setItemDialogOpen(true);
           }}
+          onCreateSprint={createSprint}
+          onEditSprint={editSprint}
+          onDeleteSprint={deleteSprint}
+          onStartSprint={(id) => editSprint(id, { status: "active" })}
+          onCompleteSprint={(id) => editSprint(id, { status: "completed" })}
           initialAiChanges={intelliChanges}
         />
       )}

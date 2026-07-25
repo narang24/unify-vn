@@ -108,5 +108,18 @@ export interface SpaceWorkItem {
   description?: string | null;
   label?: string | null;
   epicId?: string | null;
+  sprintId?: string | null;
   attachments?: WorkItemAttachment[];
+}
+
+export type SprintStatus = "planning" | "active" | "completed";
+
+export interface Sprint {
+  id: string;
+  name: string;
+  goal?: string | null;
+  startDate: string;
+  endDate: string;
+  status: SprintStatus;
+  spaceId: string;
 }

@@ -86,7 +86,7 @@ export function SummaryView({ items, spaceName }: SummaryViewProps) {
   ];
 
   return (
-    <div className="h-full overflow-y-auto scroll-thin p-5 space-y-6">
+    <div className="h-full overflow-y-auto scroll-thin p-5 space-y-6 font-semibold">
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {statCards.map((card, i) => {
@@ -102,7 +102,7 @@ export function SummaryView({ items, spaceName }: SummaryViewProps) {
               <div className={cn("mb-2 inline-flex rounded-lg p-1.5", card.bg)}>
                 <Icon className={cn("h-4 w-4", card.color)} />
               </div>
-              <p className="text-2xl font-bold text-foreground">{card.value}</p>
+              <p className="text-2xl font-semibold text-foreground">{card.value}</p>
               <p className="mt-0.5 text-[12px] text-muted">{card.label}</p>
             </motion.div>
           );
@@ -138,7 +138,7 @@ export function SummaryView({ items, spaceName }: SummaryViewProps) {
               ))}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-foreground">{completionPct}%</span>
+              <span className="text-2xl font-semibold text-foreground">{completionPct}%</span>
               <span className="text-[10px] text-muted">complete</span>
             </div>
           </div>
@@ -146,7 +146,7 @@ export function SummaryView({ items, spaceName }: SummaryViewProps) {
             {DEFAULT_COLUMNS.map((col) => (
               <div key={col.id} className="flex items-center justify-between text-[12px]">
                 <span className="text-muted">{col.label}</span>
-                <span className="font-medium text-foreground">{byStatus[col.id] ?? 0}</span>
+                <span className="font-semibold text-foreground">{byStatus[col.id] ?? 0}</span>
               </div>
             ))}
           </div>
@@ -175,7 +175,7 @@ export function SummaryView({ items, spaceName }: SummaryViewProps) {
                         <Icon className="h-3.5 w-3.5" style={{ color: cfg.color }} />
                         <span className="text-[12px] text-foreground">{cfg.label}</span>
                       </div>
-                      <span className="text-[12px] font-medium text-muted">{count}</span>
+                      <span className="text-[12px] font-semibold text-muted">{count}</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-border-subtle overflow-hidden">
                       <motion.div
@@ -233,7 +233,7 @@ function MetricRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-1 border-b border-border-subtle last:border-0">
       <span className="text-[12px] text-muted">{label}</span>
-      <span className="text-[12px] font-medium text-foreground truncate max-w-[120px]">{value}</span>
+      <span className="text-[12px] font-semibold text-foreground truncate max-w-30">{value}</span>
     </div>
   );
 }

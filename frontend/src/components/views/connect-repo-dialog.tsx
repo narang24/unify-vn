@@ -97,7 +97,7 @@ export function ConnectRepoDialog({ open, onClose, spaceName, onConnected }: Con
               </div>
               <div>
                 <h2 className="text-[14px] font-semibold text-foreground">Connect Repository</h2>
-                <p className="text-[11.5px] text-muted">{spaceName}</p>
+                <p className="text-[11.5px] font-semibold text-muted">{spaceName}</p>
               </div>
             </div>
             <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-foreground/[0.06]">
@@ -112,7 +112,7 @@ export function ConnectRepoDialog({ open, onClose, spaceName, onConnected }: Con
                 key={p}
                 onClick={() => setProvider(p)}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-lg py-1.5 text-[12.5px] font-medium transition-all",
+                  "flex flex-1 items-center justify-center gap-2 rounded-lg py-1.5 text-[12.5px] font-semibold transition-all",
                   provider === p
                     ? "bg-panel text-foreground shadow-sm"
                     : "text-muted hover:text-foreground",
@@ -137,7 +137,7 @@ export function ConnectRepoDialog({ open, onClose, spaceName, onConnected }: Con
               "Issues ↔ tasks (bi-directional)",
               "Deployment events → status updates",
             ].map((f) => (
-              <div key={f} className="flex items-center gap-2 text-[12px] text-foreground">
+              <div key={f} className="flex items-center gap-2 text-[12px] font-semibold text-foreground">
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
                 {f}
               </div>
@@ -161,10 +161,10 @@ export function ConnectRepoDialog({ open, onClose, spaceName, onConnected }: Con
                 value={repoUrl}
                 onChange={(e) => { setRepoUrl(e.target.value); setError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && handleConnect()}
-                className="h-9 pl-8 text-[13px]"
+                className="h-9 pl-8 text-[13px] font-semibold"
               />
             </div>
-            <Button onClick={handleConnect} size="sm" className="h-9 shrink-0" disabled={connecting}>
+            <Button onClick={handleConnect} size="sm" className="h-9 shrink-0 font-semibold" disabled={connecting}>
               {connecting ? (
                 <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : (
@@ -174,7 +174,7 @@ export function ConnectRepoDialog({ open, onClose, spaceName, onConnected }: Con
           </div>
 
           {error && (
-            <div className="mb-3 flex items-center gap-1.5 text-[11.5px] text-red-500">
+            <div className="mb-3 flex items-center gap-1.5 text-[11.5px] font-semibold text-red-500">
               <AlertCircle className="h-3.5 w-3.5" /> {error}
             </div>
           )}
@@ -201,10 +201,10 @@ export function ConnectRepoDialog({ open, onClose, spaceName, onConnected }: Con
                       <GitMerge className="h-4 w-4 shrink-0" style={{ color: "#fc6d26" }} />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-[12.5px] font-medium text-foreground">{repo.name}</p>
-                      <p className="text-[11px] text-muted">Connected {repo.connectedAt}</p>
+                      <p className="truncate text-[12.5px] font-semibold text-foreground">{repo.name}</p>
+                      <p className="text-[11px] font-semibold text-muted">Connected {repo.connectedAt}</p>
                     </div>
-                    <div className="flex items-center gap-1 text-[11px] text-emerald-500">
+                    <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-500">
                       <Zap className="h-3 w-3" /> Live
                     </div>
                     <button

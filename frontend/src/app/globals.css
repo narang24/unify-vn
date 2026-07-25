@@ -28,7 +28,7 @@
 
   /* slightly-rounded, not pill — Jira-like */
   --radius: 10px;
-  
+
   --navbar: var(--mint-light);
 }
 
@@ -75,6 +75,7 @@ html {
   color-scheme: light;
   font-size: 16.5px;
 }
+
 html.dark {
   color-scheme: dark;
 }
@@ -101,13 +102,17 @@ a {
   width: 6px;
   height: 6px;
 }
+
 .scroll-thin::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
   border-radius: 999px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
@@ -118,6 +123,7 @@ a {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -129,6 +135,7 @@ a {
   background-size: 18px 18px;
   background-color: var(--background);
 }
+
 /* Ambient faint teal glow */
 .dotted-glow::before {
   content: "";
@@ -136,14 +143,13 @@ a {
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(
-      ellipse 60% 55% at 50% 42%,
+    radial-gradient(ellipse 60% 55% at 50% 42%,
       color-mix(in srgb, var(--accent) 16%, transparent),
-      transparent 70%
-    );
+      transparent 70%);
   opacity: 0.8;
 }
-.dotted-glow > * {
+
+.dotted-glow>* {
   position: relative;
   z-index: 1;
 }
@@ -153,6 +159,7 @@ a {
 .drag-armed * {
   cursor: grab;
 }
+
 .dragging,
 .dragging * {
   cursor: grabbing !important;
@@ -213,13 +220,41 @@ a {
   border: 1px solid transparent;
   transition: background 0.16s, border-color 0.16s, transform 0.12s, box-shadow 0.16s;
 }
-.landing-btn--lg { padding: 0.7rem 1.3rem; font-size: 0.92rem; }
-.landing-btn--ghost { background: transparent; color: var(--foreground); }
-.landing-btn--ghost:hover { background: color-mix(in srgb, var(--foreground) 6%, transparent); }
-.landing-btn--primary { background: var(--accent); color: var(--accent-foreground); }
-.landing-btn--primary:hover { background: var(--accent-soft); transform: translateY(-1px); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent); }
-.landing-btn--outline { background: transparent; color: var(--foreground); border-color: var(--border-subtle); }
-.landing-btn--outline:hover { background: color-mix(in srgb, var(--foreground) 6%, transparent); }
+
+.landing-btn--lg {
+  padding: 0.7rem 1.3rem;
+  font-size: 0.92rem;
+}
+
+.landing-btn--ghost {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.landing-btn--ghost:hover {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.landing-btn--primary {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.landing-btn--primary:hover {
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.landing-btn--outline {
+  background: transparent;
+  color: var(--foreground);
+  border-color: var(--border-subtle);
+}
+
+.landing-btn--outline:hover {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
 
 .landing-main {
   flex: 1;
@@ -234,7 +269,10 @@ a {
   margin: 0 auto;
 }
 
-.landing-hero { text-align: center; max-width: 720px; }
+.landing-hero {
+  text-align: center;
+  max-width: 720px;
+}
 
 .landing-pill {
   display: inline-flex;
@@ -258,7 +296,10 @@ a {
   color: var(--foreground);
   margin: 0;
 }
-.landing-title-accent { color: var(--accent); }
+
+.landing-title-accent {
+  color: var(--accent);
+}
 
 .landing-sub {
   margin: 1.15rem auto 0;
@@ -283,7 +324,12 @@ a {
   width: 100%;
   max-width: 920px;
 }
-@media (max-width: 720px) { .landing-features { grid-template-columns: 1fr; } }
+
+@media (max-width: 720px) {
+  .landing-features {
+    grid-template-columns: 1fr;
+  }
+}
 
 .landing-feature {
   border: 1px solid var(--border-subtle);
@@ -292,6 +338,7 @@ a {
   padding: 1.15rem;
   text-align: left;
 }
+
 .landing-feature-icon {
   display: inline-flex;
   align-items: center;
@@ -303,8 +350,20 @@ a {
   color: var(--accent);
   margin-bottom: 0.75rem;
 }
-.landing-feature-title { font-size: 0.98rem; font-weight: 700; color: var(--foreground); margin: 0 0 0.3rem; }
-.landing-feature-desc { font-size: 0.85rem; line-height: 1.5; color: var(--muted); margin: 0; }
+
+.landing-feature-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin: 0 0 0.3rem;
+}
+
+.landing-feature-desc {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+}
 
 /* ─── Auth Page ──────────────────────────────────────────────────────────── */
 
@@ -324,17 +383,24 @@ a {
   background: var(--panel);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0,128,128,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 8px 32px rgba(0, 128, 128, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
   padding: 2.25rem 2rem 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  animation: auth-card-in 0.35s cubic-bezier(.22,1,.36,1) both;
+  animation: auth-card-in 0.35s cubic-bezier(.22, 1, .36, 1) both;
 }
 
 @keyframes auth-card-in {
-  from { opacity: 0; transform: translateY(18px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .auth-logo-wrap {
@@ -357,7 +423,7 @@ a {
   font-size: 1.6rem;
   font-weight: 800;
   letter-spacing: -1px;
-  box-shadow: 0 4px 18px rgba(0,128,128,0.30);
+  box-shadow: 0 4px 18px rgba(0, 128, 128, 0.30);
   margin-bottom: 0.25rem;
 }
 
@@ -402,7 +468,7 @@ a {
 .auth-tab--active {
   background: var(--panel);
   color: var(--foreground);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.10);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.10);
 }
 
 /* Form */
@@ -440,7 +506,7 @@ a {
 
 .auth-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(0,128,128,0.13);
+  box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.13);
 }
 
 .auth-input::placeholder {
@@ -470,6 +536,7 @@ a {
   align-items: center;
   transition: color 0.15s;
 }
+
 .auth-eye-btn:hover {
   color: var(--foreground);
 }
@@ -477,8 +544,8 @@ a {
 .auth-error {
   font-size: 0.82rem;
   color: var(--danger);
-  background: rgba(209,73,91,0.08);
-  border: 1px solid rgba(209,73,91,0.18);
+  background: rgba(209, 73, 91, 0.08);
+  border: 1px solid rgba(209, 73, 91, 0.18);
   border-radius: 7px;
   padding: 0.5rem 0.75rem;
   margin: 0;
@@ -496,21 +563,24 @@ a {
   cursor: pointer;
   letter-spacing: 0.01em;
   transition: background 0.18s, box-shadow 0.18s, opacity 0.18s, transform 0.12s;
-  box-shadow: 0 3px 12px rgba(0,128,128,0.22);
+  box-shadow: 0 3px 12px rgba(0, 128, 128, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 42px;
   margin-top: 0.1rem;
 }
+
 .auth-submit-btn:hover:not(:disabled) {
   background: var(--abyssal, #016a83);
-  box-shadow: 0 5px 18px rgba(0,128,128,0.32);
+  box-shadow: 0 5px 18px rgba(0, 128, 128, 0.32);
   transform: translateY(-1px);
 }
+
 .auth-submit-btn:active:not(:disabled) {
   transform: translateY(0);
 }
+
 .auth-submit-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -520,13 +590,16 @@ a {
   display: inline-block;
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(255,255,255,0.35);
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
   border-top-color: #fff;
   border-radius: 50%;
   animation: auth-spin 0.65s linear infinite;
 }
+
 @keyframes auth-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Divider */
@@ -535,11 +608,13 @@ a {
   align-items: center;
   gap: 0.65rem;
 }
+
 .auth-divider-line {
   flex: 1;
   height: 1px;
   background: var(--border-subtle);
 }
+
 .auth-divider-text {
   font-size: 0.75rem;
   color: var(--muted);
@@ -569,12 +644,14 @@ a {
   transition: background 0.17s, border-color 0.17s, box-shadow 0.17s, transform 0.12s;
   text-decoration: none;
 }
+
 .auth-oauth-btn:hover {
   background: var(--panel-strong);
   border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(0,128,128,0.12);
+  box-shadow: 0 2px 8px rgba(0, 128, 128, 0.12);
   transform: translateY(-1px);
 }
+
 .auth-oauth-icon {
   width: 17px;
   height: 17px;
@@ -588,6 +665,7 @@ a {
   text-align: center;
   margin: 0;
 }
+
 .auth-terms-link {
   color: var(--accent);
   text-decoration: underline;
