@@ -158,6 +158,12 @@ async function upsertOAuthUser(
 
 const app = express();
 
+// Trust the Node.js gateway proxy so Passport sees the original host/protocol
+// from x-forwarded-host / x-forwarded-proto headers. This ensures relative
+// callbackURLs resolve to the gateway address (port 8000) rather than the
+// internal auth service address (port 8001).
+app.set("trust proxy", true);
+
 app.use(
   cors({
     origin: (origin, callback) => {

@@ -4,13 +4,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
-import { ArrowRight, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, Sparkles, ChevronLeft, ChevronRight, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { BorderBeam } from "@/components/ui/border-beam";
-import { getToken, fetchWithAuth } from "@/lib/auth";
-import { Globe3DDemo } from "@/components/ui/globe-demo";
+import { getToken, fetchWithAuth, setToken } from "@/lib/auth";
 
 /* ─── Feature card data ─────────────────────────────────────────────────── */
 const FEATURE_CARDS = [
@@ -124,435 +124,371 @@ export default function LandingPage() {
   const [user, setUser] = useState<{ fullName?: string | null; email: string } | null>(null);
   const { idx, prev, next, jump } = useCarousel(FEATURE_CARDS.length, 4500);
 
+  // ── Email/password auth state ────────────────────────────────────────────
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
+  function openAuth(tab: "signin" | "signup") {
+    setAuthTab(tab);
+    setAuthError(null);
+    setAuthModalOpen(true);
+  }
+
+  async function handleEmailAuth(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      const endpoint = authTab === "signin"
+        ? `${apiBase}/api/v1/auth/signin`
+        : `${apiBase}/api/v1/auth/signup`;
+      const body: Record<string, string> = { email: authEmail, password: authPassword };
+      if (authTab === "signup" && authName.trim()) body.fullName = authName.trim();
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+      setToken(data.accessToken);
+      setUser(data.user);
+      setAuthModalOpen(false);
+      router.push("/dashboard");
+    } catch {
+      setAuthError("Network error. Please check your connection.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
     fetchWithAuth(`${apiBase}/api/v1/auth/me`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setUser(d.user))
+      .then((d) => {
+        if (d?.user) {
+          setUser(d.user);
+          router.push("/dashboard");
+        }
+      })
       .catch(() => null);
-  }, [apiBase]);
+  }, [apiBase, router]);
 
   const card = FEATURE_CARDS[idx];
 
   return (
-    <div className="landing-root overflow-hidden flex flex-col items-center relative">
-      {/* ── GLOBE BACKGROUND ────────────────────────────────────────────── */}
-      <div className="fixed top-[15vh] inset-x-0 w-full flex justify-center opacity-25 pointer-events-none -z-10 pointer-events-none mix-blend-screen">
-        <Globe3DDemo />
-      </div>
-
+    <div className="landing-root bg-[#f2f9f8] text-slate-900 flex flex-col items-center relative h-[100dvh] overflow-hidden w-full">
       {/* ── NAV ─────────────────────────────────────────────────────────── */}
       <header className="landing-nav w-full max-w-[1120px] mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <div className="flex justify-center items-center gap-2.5">
           <Image
-            src="/unify-intelli-icon.png"
+            src="/logo.png"
             alt="Unify"
-            width={32}
-            height={32}
-            className="rounded-[9px] object-cover"
+            width={46}
+            height={46}
+            className="rounded-full object-cover"
           />
-          <span className="text-[17px] font-bold tracking-tight text-foreground">Unify</span>
+          <span className="text-[26px] font-semibold tracking-tight text-slate-900">Unify</span>
         </div>
-
-        <nav className="hidden sm:flex items-center gap-1 text-[13px] font-medium text-muted">
-          <a href="#features" className="px-3 py-1.5 rounded-lg hover:bg-foreground/[0.06] hover:text-foreground transition-colors">Features</a>
-          <a href="#why" className="px-3 py-1.5 rounded-lg hover:bg-foreground/[0.06] hover:text-foreground transition-colors">Why Unify</a>
-        </nav>
 
         <div className="flex items-center gap-2">
           {user ? (
-            <Button onClick={() => router.push("/dashboard")} size="sm" className="rounded-lg">
+            <Button onClick={() => router.push("/dashboard")} size="sm" className="rounded-lg font-semibold bg-[#0c8f8f]/10 hover:bg-[#0c8f8f]/20 text-slate-900 shadow-none">
               Dashboard <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           ) : (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => router.push("/auth?tab=signin")} className="rounded-lg">
-                Sign In
-              </Button>
-              <Button size="sm" onClick={() => router.push("/auth?tab=signup")} className="rounded-lg">
-                Get Started
-              </Button>
-            </>
+            <Button size="sm" onClick={() => openAuth("signin")} className="rounded-lg font-semibold bg-[#0c8f8f]/15 hover:bg-[#0c8f8f]/25 text-slate-900 shadow-none">
+              Sign In
+            </Button>
           )}
         </div>
       </header>
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col items-center w-full max-w-[1120px] mx-auto px-6 py-12 gap-16">
+      <main className="flex-1 flex flex-col w-full max-w-[1120px] mx-auto px-6 py-10">
         <motion.section
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center max-w-[720px] flex flex-col items-center"
+          className="flex flex-col md:flex-row items-center justify-between gap-12 w-full"
         >
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 mb-6 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
-            <Sparkles className="h-3.5 w-3.5" />
-            AI-native project workspace
-          </span>
-
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-foreground leading-[1.1] mb-6">
-            Plan. Code.{" "}
-            <span className="text-accent">Ship.</span>
-            <br />
-            All in one place.
-          </h1>
-
-          <p className="text-lg text-muted max-w-[600px] leading-relaxed mb-8">
-            Boards, backlogs, repos and an AI teammate — unified into one seamless workspace.
-            No more tab switching. Just shipping.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {user ? (
+          {/* Left: Text Content */}
+          <div className="flex-1 flex flex-col items-start text-left max-w-[560px]">
+            <span className="text-accent text-[11px] font-bold tracking-widest uppercase mb-4">
+              COLLABORATIVE ENGINEERING WORKSPACE
+            </span>
+            <h1 className="text-4xl md:text-[2.75rem] font-bold tracking-tight text-slate-900 leading-[1.15] mb-5">
+              Where Teams Build,<br />
+              Collaborate,<br />
+              and Deliver Better Software.
+            </h1>
+            <p className="text-[15px] text-slate-600 leading-relaxed mb-8 max-w-[480px]">
+              Organize projects, connect repositories, streamline engineering workflows,
+              and resolve production issues with complete project and codebase context.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 size="lg"
-                className="gap-2 rounded-xl text-base px-6 h-12 shadow-md shadow-accent/20"
-                onClick={() => router.push("/dashboard")}
+                className="group rounded-xl bg-[#0c8f8f] hover:bg-[#0a7a7a] text-white font-medium w-[260px] justify-center h-12 shadow-[0_4px_14px_0_rgba(12,143,143,0.39)] transition-all hover:shadow-[0_6px_20px_rgba(12,143,143,0.23)] hover:-translate-y-[1px] flex items-center gap-2"
+                onClick={() => openAuth("signup")}
               >
-                Go to Dashboard <ArrowRight className="h-4 w-4" />
+                <span>Let's collaborate</span>
+                <ExternalLink className="h-4 w-4 opacity-0 -ml-6 transition-all group-hover:opacity-100 group-hover:ml-0" />
               </Button>
-            ) : (
-              <>
-                <Button
-                  size="lg"
-                  className="gap-2 rounded-xl text-base px-6 h-12 shadow-md shadow-accent/20"
-                  onClick={() => router.push("/auth?tab=signup")}
-                >
-                  Start for free <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="rounded-xl text-base px-6 h-12"
-                  onClick={() => router.push("/auth?tab=signin")}
-                >
-                  Sign in
-                </Button>
-              </>
-            )}
-          </div>
-        </motion.section>
-
-        {/* ── CARDS CAROUSEL ─────────────────────────────────────────────── */}
-        <motion.section
-          id="features"
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[960px]"
-          aria-label="Feature carousel"
-        >
-          {/* Section label */}
-          <div className="flex items-center justify-between mb-5 px-1">
-            <p className="text-[13px] font-semibold tracking-wider uppercase text-muted">
-              Built for every workflow
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={prev}
-                aria-label="Previous feature"
-                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-border-subtle hover:bg-foreground/[0.06] transition-colors text-muted hover:text-foreground"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                onClick={next}
-                aria-label="Next feature"
-                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-border-subtle hover:bg-foreground/[0.06] transition-colors text-muted hover:text-foreground"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
           </div>
 
-          {/* Main carousel */}
-          <div className="relative overflow-hidden rounded-[24px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                className="relative"
-              >
-                <Card className="relative overflow-hidden flex flex-col md:flex-row min-h-[360px] rounded-[24px] border-border-subtle shadow-lg">
-                  <BorderBeam duration={7} colorFrom={card.accent} colorTo="transparent" />
-
-                  {/* Text side */}
-                  <div className="flex flex-col justify-center gap-5 p-8 md:p-10 md:w-[46%] z-10 bg-panel">
-                    <Badge
-                      className="self-start text-[11px] px-2.5 py-1 rounded-md font-semibold"
-                      style={{
-                        background: `color-mix(in srgb, ${card.accent} 12%, transparent)`,
-                        color: card.accent,
-                        border: `1px solid color-mix(in srgb, ${card.accent} 25%, transparent)`,
-                      }}
-                    >
-                      {card.tag}
-                    </Badge>
-
-                    <div>
-                      <h2 className="text-3xl font-extrabold tracking-tight text-foreground leading-tight mb-3">
-                        {card.headline}
-                      </h2>
-                      <p className="text-[15px] leading-relaxed text-muted">
-                        {card.sub}
-                      </p>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="self-start gap-1.5 rounded-lg mt-2"
-                      onClick={() => router.push("/auth?tab=signup")}
-                    >
-                      Try it <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-
-                  {/* Image side */}
-                  <div className="relative md:flex-1 min-h-[240px] md:min-h-0 overflow-hidden flex items-center justify-center p-8 bg-gradient-to-br from-panel to-panel-strong border-l border-border-subtle">
-                    <div className="relative w-full h-full min-h-[200px] max-w-[400px]">
-                      <Image
-                        src={card.img}
-                        alt={card.tag}
-                        fill
-                        className="object-contain filter drop-shadow-xl transition-transform duration-500 hover:scale-105"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Dot indicators */}
-            <div className="flex justify-center gap-2 mt-5 mb-2">
-              {FEATURE_CARDS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => jump(i)}
-                  aria-label={`Go to slide ${i + 1}`}
-                  className="transition-all duration-300 rounded-full"
-                  style={{
-                    width: i === idx ? 24 : 8,
-                    height: 8,
-                    background: i === idx
-                      ? card.accent
-                      : "color-mix(in srgb, var(--foreground) 18%, transparent)",
-                  }}
-                />
-              ))}
+          {/* Right: Illustration */}
+          <div className="flex-1 w-full flex justify-end">
+            <div className="relative w-full max-w-[500px] aspect-[4/3]">
+              <Image
+                src="/landing-page-bg.png"
+                alt="Illustration"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
           </div>
-        </motion.section>
-
-        {/* ── UNIFY INTELLI HIGHLIGHT ─────────────────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[960px]"
-        >
-          <Card className="relative overflow-hidden rounded-[24px] flex flex-col md:flex-row items-center gap-0 border-border-subtle shadow-md">
-            <BorderBeam duration={9} colorFrom="var(--accent)" colorTo="transparent" delay={2} />
-
-            {/* Image panel */}
-            <div className="relative w-full md:w-[42%] min-h-[240px] md:min-h-[320px] shrink-0 overflow-hidden bg-gradient-to-br from-accent/10 to-panel-strong border-r border-border-subtle flex items-center justify-center p-10">
-              <div className="relative w-full h-full max-w-[200px] max-h-[200px]">
-                <Image
-                  src="/unify-intelli-icon.png"
-                  alt="Unify Intelli AI"
-                  fill
-                  className="object-contain drop-shadow-2xl rounded-2xl"
-                  sizes="(max-width: 768px) 100vw, 42vw"
-                />
-              </div>
-            </div>
-
-            {/* Text panel */}
-            <div className="flex flex-col gap-4 p-8 md:p-12 bg-panel flex-1 w-full">
-              <Badge className="self-start rounded-md bg-accent/10 text-accent border border-accent/20 text-xs px-2.5 py-1">
-                <Sparkles className="h-3.5 w-3.5 mr-1" /> AI Teammate
-              </Badge>
-              <h2 className="text-3xl font-extrabold tracking-tight text-foreground leading-snug">
-                Meet <span className="text-accent">Unify Intelli.</span>
-                <br />Your AI that actually gets it.
-              </h2>
-              <p className="text-[15px] leading-relaxed text-muted max-w-[420px]">
-                Intelli reads your repos, understands your issues and generates plans — not just answers.
-                Ask it anything. Let it do the heavy lifting.
-              </p>
-              <ul className="flex flex-col gap-3 text-[14px] text-muted mt-2">
-                {[
-                  "Code-aware context from GitHub & GitLab",
-                  "Sprint planning suggestions",
-                  "Issue summarisation & triage",
-                ].map((pt) => (
-                  <li key={pt} className="flex items-start gap-2.5">
-                    <span className="mt-[2px] h-[18px] w-[18px] rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white bg-accent shadow-sm">
-                      ✓
-                    </span>
-                    {pt}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Card>
-        </motion.section>
-
-        {/* ── WHY UNIFY + STATS ───────────────────────────────────────────── */}
-        <motion.section
-          id="why"
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[960px] grid md:grid-cols-2 gap-6"
-        >
-          {/* Left: Why rows */}
-          <Card className="rounded-[24px] p-8 md:p-10 flex flex-col gap-6 shadow-sm">
-            <p className="text-[13px] font-semibold tracking-widest uppercase text-muted">
-              Why teams choose Unify
-            </p>
-            <div className="flex flex-col gap-5">
-              {WHY_ROWS.map(({ label, desc }, i) => (
-                <motion.div
-                  key={label}
-                  initial={{ opacity: 0, x: -12 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.07, duration: 0.35 }}
-                  className="flex items-start gap-3.5"
-                >
-                  <span className="mt-0.5 h-6 w-6 rounded-lg shrink-0 flex items-center justify-center text-[12px] font-bold bg-accent/10 text-accent border border-accent/20">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p className="text-[15px] font-semibold text-foreground leading-tight">{label}</p>
-                    <p className="text-[14px] text-muted mt-1">{desc}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Right: Stats + views grid */}
-          <div className="flex flex-col gap-6">
-            {/* Stats row */}
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { val: 4, suffix: " boards", label: "Board types" },
-                { val: 3, suffix: " Git providers", label: "Integrations" },
-                { val: 6, suffix: " views", label: "Project views" },
-                { val: 1, suffix: " AI", label: "Built-in teammate" },
-              ].map(({ val, suffix, label }) => (
-                <Card key={label} className="rounded-[20px] p-6 flex flex-col gap-1.5 shadow-sm justify-center">
-                  <span className="text-3xl font-extrabold text-accent leading-none tracking-tight">
-                    <Counter to={val} suffix={suffix} />
-                  </span>
-                  <span className="text-[13px] font-medium text-muted">{label}</span>
-                </Card>
-              ))}
-            </div>
-
-            {/* Views grid */}
-            <Card className="rounded-[20px] p-6 flex flex-col gap-4 shadow-sm flex-1 justify-center">
-              <p className="text-[13px] font-semibold tracking-widest uppercase text-muted">
-                Every view you need
-              </p>
-              <div className="grid grid-cols-3 gap-2.5">
-                {["List", "Timeline", "Calendar", "Reports", "Board", "Backlog"].map((v) => (
-                  <div
-                    key={v}
-                    className="rounded-xl px-3 py-2.5 text-[13px] font-semibold text-center bg-accent/5 text-accent border border-accent/10 transition-colors hover:bg-accent/10"
-                  >
-                    {v}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        </motion.section>
-
-        {/* ── BOTTOM CTA ──────────────────────────────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[960px] pb-12"
-        >
-          <Card className="relative overflow-hidden rounded-[24px] py-16 px-8 flex flex-col items-center text-center gap-6 shadow-md border-border-subtle bg-panel">
-            <BorderBeam duration={10} colorFrom="var(--accent)" colorTo="var(--accent-soft)" />
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "radial-gradient(ellipse 80% 60% at 50% 120%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%)",
-              }}
-            />
-            <div className="relative z-10 flex flex-col items-center gap-6">
-              <div className="p-1 rounded-[18px] bg-background border border-border-subtle shadow-sm">
-                <Image
-                  src="/unify-intelli-icon.png"
-                  alt="Unify"
-                  width={56}
-                  height={56}
-                  className="rounded-[14px]"
-                />
-              </div>
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground leading-tight max-w-[500px]">
-                Your whole team. One workspace.
-                <span className="text-accent"> Zero chaos.</span>
-              </h2>
-              <p className="text-[16px] text-muted max-w-[420px] leading-relaxed">
-                Sign up in seconds. Bring your team. Start shipping.
-              </p>
-              <div className="flex gap-3 flex-wrap justify-center mt-2">
-                <Button
-                  size="lg"
-                  className="gap-2 px-8 h-12 rounded-xl text-[15px]"
-                  onClick={() => router.push("/auth?tab=signup")}
-                >
-                  Get started free <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="px-8 h-12 rounded-xl text-[15px]"
-                  onClick={() => router.push("/auth?tab=signin")}
-                >
-                  Sign in
-                </Button>
-              </div>
-
-              {/* OAuth hints */}
-              <p className="text-[13px] text-muted mt-2">
-                Continue with{" "}
-                {["Google", "GitHub", "GitLab"].map((p, i, arr) => (
-                  <span key={p}>
-                    <a
-                      href={`${apiBase}/api/v1/auth/oauth/${p.toLowerCase()}`}
-                      className="text-accent hover:underline underline-offset-2 font-medium"
-                    >
-                      {p}
-                    </a>
-                    {i < arr.length - 1 && <span className="text-muted/40 mx-1.5"> · </span>}
-                  </span>
-                ))}
-              </p>
-            </div>
-          </Card>
         </motion.section>
       </main>
 
+
+
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
-      <footer className="w-full py-6 text-center text-[13px] text-muted/60 border-t border-border-subtle mt-auto bg-background">
-        © {new Date().getFullYear()} Unify · Built for teams that ship.
+      <footer className="w-full py-3 text-center text-[11.5px] text-slate-400 mt-auto">
+        © {new Date().getFullYear()} Unify. All rights reserved.
       </footer>
+
+      {/* ── AUTH MODAL ──────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {authModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setAuthModalOpen(false)}
+            />
+
+            {/* Card */}
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full max-w-[400px] z-10 rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-8 flex flex-col items-center"
+            >
+              {/* Close */}
+              <button
+                onClick={() => setAuthModalOpen(false)}
+                aria-label="Close"
+                className="absolute right-4 top-4 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+
+              {/* Icon badge */}
+              <div className="mb-5 flex items-center justify-center">
+                <Image
+                  src="/logo.png"
+                  alt="Unify Logo"
+                  width={56}
+                  height={56}
+                  className="object-contain rounded-full"
+                />
+              </div>
+
+              {/* Title */}
+              <h2 className="text-[22px] font-bold text-gray-900 tracking-tight mb-1 text-center">
+                {authTab === "signin" ? "Sign in with email" : "Create your account"}
+              </h2>
+              <p className="text-[13px] text-gray-400 text-center leading-relaxed mb-6 px-2">
+                {authTab === "signin"
+                  ? "Welcome back! Enter your details to continue."
+                  : "Join Unify and start shipping faster with your team."}
+              </p>
+
+              {/* Tab switcher */}
+              <div className="flex w-full mb-5 p-[3px] bg-gray-100 rounded-xl" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={authTab === "signin"}
+                  className={`flex-1 py-1.5 text-[13px] font-semibold rounded-[9px] transition-all ${authTab === "signin" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
+                  onClick={() => { setAuthTab("signin"); setAuthError(null); }}
+                >
+                  Sign In
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={authTab === "signup"}
+                  className={`flex-1 py-1.5 text-[13px] font-semibold rounded-[9px] transition-all ${authTab === "signup" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
+                  onClick={() => { setAuthTab("signup"); setAuthError(null); }}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              {/* Form */}
+              {/* Form */}
+              <form className="w-full flex flex-col gap-3" onSubmit={handleEmailAuth} noValidate>
+                {authTab === "signup" && (
+                  <div className="relative flex items-center">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3.5">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <Input
+                      id="auth-name"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Full Name"
+                      className="pl-9 h-10 rounded-lg bg-gray-50 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400 transition-colors text-[13px] text-gray-800 placeholder:text-gray-400"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="relative flex items-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3.5">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                  <Input
+                    id="auth-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Email"
+                    required
+                    className="pl-9 h-10 rounded-lg bg-gray-50 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400 transition-colors text-[13px] text-gray-800 placeholder:text-gray-400"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="relative flex items-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3.5 z-10">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <Input
+                    id="auth-password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete={authTab === "signin" ? "current-password" : "new-password"}
+                    placeholder="Password"
+                    required
+                    className="pl-9 pr-9 h-10 rounded-lg bg-gray-50 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400 transition-colors text-[13px] text-gray-800 placeholder:text-gray-400"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors z-10 flex items-center justify-center h-full px-1"
+                  >
+                    {showPassword ? (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                    ) : (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    )}
+                  </button>
+                </div>
+
+                {authTab === "signin" && (
+                  <div className="flex justify-end">
+                    <button type="button" className="text-[12px] text-gray-400 hover:text-gray-600 transition-colors">
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
+                {authError && (
+                  <p className="text-[12px] text-red-500 text-center" role="alert">{authError}</p>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={authLoading}
+                  className="mt-1 w-full h-10 rounded-lg bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-semibold active:scale-[0.98] transition-all shadow-sm"
+                >
+                  {authLoading ? (
+                    <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : authTab === "signin" ? "Get Started" : "Create Account"}
+                </Button>
+              </form>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 w-full my-5">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-[11px] text-gray-400">Or sign in with</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              {/* Social icons */}
+              <div className="flex items-center gap-3 w-full">
+                {/* Google */}
+                <a
+                  href={`${apiBase}/api/v1/auth/oauth/google`}
+                  className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-[13px] font-medium text-gray-700 transition-colors shadow-sm"
+                  title="Continue with Google"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                  Google
+                </a>
+
+                {/* GitHub */}
+                <a
+                  href={`${apiBase}/api/v1/auth/oauth/github`}
+                  className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-[13px] font-medium text-gray-700 transition-colors shadow-sm"
+                  title="Continue with GitHub"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#1f2328" aria-hidden="true">
+                    <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                  </svg>
+                  GitHub
+                </a>
+
+                {/* GitLab */}
+                <a
+                  href={`${apiBase}/api/v1/auth/oauth/gitlab`}
+                  className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-[13px] font-medium text-gray-700 transition-colors shadow-sm"
+                  title="Continue with GitLab"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#FC6D26" aria-hidden="true">
+                    <path d="M4.845.904a.93.93 0 0 0-.888.63L.108 11.854a1.307 1.307 0 0 0 .474 1.46L12 22.096l11.418-8.782a1.307 1.307 0 0 0 .474-1.46L20.044 1.534a.93.93 0 0 0-.888-.63.93.93 0 0 0-.888.63l-2.552 7.85H8.284L5.732 1.534A.93.93 0 0 0 4.845.904z" />
+                  </svg>
+                  GitLab
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

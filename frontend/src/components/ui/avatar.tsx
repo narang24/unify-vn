@@ -34,7 +34,7 @@ export function Avatar({
     <div
       style={{ width: size, height: size, fontSize: size * 0.42 }}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground",
+        "flex shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground dark:bg-accent/85 dark:text-white",
         className,
       )}
     >

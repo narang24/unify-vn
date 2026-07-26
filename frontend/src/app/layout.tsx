@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+// const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const raleway = Raleway({
   variable: "--font-raleway",
@@ -39,7 +39,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("h-full", "antialiased", raleway.variable, "font-sans", geist.variable)}
+      className={`${raleway.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider>

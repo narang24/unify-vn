@@ -40,7 +40,7 @@ export function TabsList({ children, className }: { children: React.ReactNode; c
   );
 }
 
-export function TabsTrigger({ value, children }: { value: string; children: React.ReactNode }) {
+export function TabsTrigger({ value, children, className }: { value: string; children: React.ReactNode; className?: string }) {
   const ctx = React.useContext(TabsContext)!;
   const active = ctx.value === value;
   return (
@@ -49,6 +49,7 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
       className={cn(
         "relative shrink-0 px-3 py-2 text-[13px] font-medium transition-colors",
         active ? "text-accent" : "text-muted hover:text-foreground",
+        className
       )}
     >
       {children}
@@ -59,8 +60,8 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
   );
 }
 
-export function TabsContent({ value, children }: { value: string; children: React.ReactNode }) {
+export function TabsContent({ value, children, className }: { value: string; children: React.ReactNode; className?: string }) {
   const ctx = React.useContext(TabsContext)!;
   if (ctx.value !== value) return null;
-  return <div>{children}</div>;
+  return <div className={className}>{children}</div>;
 }

@@ -347,6 +347,7 @@ export function SpaceTopbar({
                 doneStatusId={doneId}
                 onStartSprint={() => toast({ title: "Sprint started", variant: "success" })}
                 onCreate={onCreateBacklog}
+                onCreateSprint={onCreateSprint}
               />
             )}
             {activeView === "reports" && (

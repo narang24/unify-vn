@@ -19,13 +19,13 @@ export type BoardWorkItem = SpaceWorkItem;
 
 function getStatusStyles(statusLabel: string) {
   const upper = statusLabel.toUpperCase();
-  const base = "rounded-md px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide shadow-sm text-black";
+  const base = "rounded-md px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide shadow-sm";
   
-  if (upper === "IN PROGRESS") return cn(base, "bg-blue-300");
-  if (upper === "TO DO") return cn(base, "bg-slate-200");
-  if (upper === "DONE") return cn(base, "bg-green-300");
-  if (upper === "IN REVIEW") return cn(base, "bg-orange-300");
-  return cn(base, "bg-[#E6C998]");
+  if (upper === "IN PROGRESS") return cn(base, "bg-blue-300 text-black");
+  if (upper === "TO DO") return cn(base, "bg-slate-200 text-black");
+  if (upper === "DONE") return cn(base, "bg-[#537B2F] text-white");
+  if (upper === "IN REVIEW") return cn(base, "bg-[#B7410E] text-white");
+  return cn(base, "bg-[#E6C998] text-black");
 }
 
 export function BoardView({
@@ -94,10 +94,10 @@ export function BoardView({
             className={cn(
               "flex w-72 shrink-0 flex-col self-start rounded-xl border-[3px] p-3 transition-all duration-200",
               isOver
-                ? "border-teal-700 bg-teal-800/20 shadow-[inset_0_1px_12px_rgba(0,128,128,0.12)]"
+                ? "border-teal-800 bg-teal-800/10 shadow-[inset_0_1px_12px_rgba(0,128,128,0.12)]"
                 : isSource
-                  ? "border-dashed border-teal-600/40 bg-[#e6f4f3]/40"
-                  : "border-transparent bg-[#e6f4f3]/30",
+                  ? "border-dashed border-teal-600/40 bg-[#e6f4f3]/40 dark:bg-foreground/[0.05]"
+                  : "border-transparent bg-[#e6f4f3]/30 dark:bg-foreground/[0.03]",
             )}
           >
             {/* Column header — shows transition badge when dragging */}

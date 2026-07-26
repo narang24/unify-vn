@@ -78,7 +78,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── Route: /api/v1/auth/** → auth service :8001 ──────────────────────────
+  // ── Route: /api/v1/auth/** → auth service :4001 ──────────────────────────
   const authPrefix = `${env.apiPrefix}/auth`;
   if (url.startsWith(authPrefix)) {
     proxy.web(req, res, { target: `http://localhost:${AUTH_PORT}` });

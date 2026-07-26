@@ -87,7 +87,7 @@ export function CreateSprintDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Create Sprint" className="max-w-2xl p-0 gap-0 overflow-hidden" hideCloseButton>
-        <div className="flex items-center justify-between border-b border-border-subtle bg-panel-strong px-5 py-3">
+        <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
           <h2 className="text-[15px] font-bold text-foreground">Create sprint</h2>
         </div>
 
@@ -155,7 +155,7 @@ export function CreateSprintDialog({
 
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-border-subtle bg-panel-strong px-5 py-3">
+          <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-5 py-3">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

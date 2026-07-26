@@ -43,8 +43,8 @@ type Workspace = {
   spaces: Space[];
 };
 
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
+function uid(prefix = "") {
+  return crypto.randomUUID();
 }
 
 function seededWorkspace(): Workspace {

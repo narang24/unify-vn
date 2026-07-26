@@ -5,11 +5,11 @@ import { Reorder, useDragControls } from "framer-motion";
 import { Plus, GitBranch, FolderGit2, GripVertical, Star, MoreVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConnectGithubDialog } from "@/components/repo/connect-github-dialog";
 import { useIncidents } from "@/lib/incident-context";
@@ -101,8 +101,8 @@ export function RepoSidebarSection({
 
 function RepoGlyph({ repo }: { repo: ConnectedRepository }) {
     const owner = repo.owner || repo.fullName.split("/")[0];
-    const avatarUrl = repo.provider === "github" 
-        ? `https://github.com/${owner}.png?size=40` 
+    const avatarUrl = repo.provider === "github"
+        ? `https://github.com/${owner}.png?size=40`
         : `https://avatar.vercel.sh/${owner}`;
 
     return (
