@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
-import { WORK_ITEM_TYPES, DEFAULT_COLUMNS } from "@/lib/work-item-types";
+import * as React from "react";
+import { ChevronLeft, ChevronRight, Layers, GripVertical } from "lucide-react";
+import { WORK_ITEM_TYPES } from "@/lib/work-item-types";
 import type { SpaceWorkItem } from "@/lib/work-item-types";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface TimelineViewProps {
@@ -13,199 +13,169 @@ interface TimelineViewProps {
   onUpdateItemDates?: (itemId: string, patch: { startDate?: string | null; dueDate?: string | null }) => void;
 }
 
-const MONTHS_SHOWN = 2;
-const COL_WIDTH = 32; // px per day
+const DAY_W = 36;
+const ROW_H = 44;
+const LABEL_W = 240;
+const WINDOW_DAYS = 42; // ~6 weeks visible at a time
+const MIN_BAR_DAYS = 1;
+const OPEN_ENDED_DAYS = 10; // default visual length for items with no due date yet
 
-function daysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
+function toISODate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function addDays(d: Date, n: number) {
+  const copy = new Date(d);
+  copy.setDate(copy.getDate() + n);
+  return copy;
+}
+function daysBetween(a: Date, b: Date) {
+  const MS = 24 * 60 * 60 * 1000;
+  return Math.round((new Date(b.toDateString()).getTime() - new Date(a.toDateString()).getTime()) / MS);
+}
+function fmt(d: Date) {
+  return d.toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function toISODate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
-function addDays(dateStr: string, delta: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + delta);
-  return toISODate(d);
-}
-
-function formatDateLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function daysBetween(start: string, end: string): number {
-  const s = new Date(start);
-  const e = new Date(end);
-  return Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1);
-}
-
-type DragMode = "move" | "resize-start" | "resize-end";
-
-interface ActiveDrag {
+interface DragState {
   itemId: string;
-  mode: DragMode;
-  startX: number;
-  origStart: string;
-  origEnd: string;
-  /** live pixel offset (smooth, not snapped) */
-  offsetPx: number;
+  mode: "move" | "resize-start" | "resize-end";
+  startClientX: number;
+  origStartDate: Date;
+  origDueDate: Date | null; // null = open-ended at drag start
 }
 
 export function TimelineView({ items, onUpdateItemDates }: TimelineViewProps) {
   const today = new Date();
-  const [offsetMonths, setOffsetMonths] = useState(0);
-  const [drag, setDrag] = useState<ActiveDrag | null>(null);
+  const [viewStart, setViewStart] = React.useState(() => addDays(today, -3));
+  const [drag, setDrag] = React.useState<DragState | null>(null);
+  const [liveDates, setLiveDates] = React.useState<Record<string, { start: Date; due: Date | null }>>({});
+  const dragRef = React.useRef<DragState | null>(null);
 
-  const baseYear = today.getFullYear();
-  const baseMonth = today.getMonth() + offsetMonths;
+  const totalWidth = WINDOW_DAYS * DAY_W;
 
-  const months = useMemo(() => {
-    const result: { year: number; month: number; days: number }[] = [];
-    for (let m = 0; m < MONTHS_SHOWN; m++) {
-      const d = new Date(baseYear, baseMonth + m, 1);
-      result.push({ year: d.getFullYear(), month: d.getMonth(), days: daysInMonth(d.getFullYear(), d.getMonth()) });
+  function goPrev() { setViewStart((d) => addDays(d, -14)); }
+  function goNext() { setViewStart((d) => addDays(d, 14)); }
+  function goToday() { setViewStart(addDays(today, -3)); }
+
+  const days = React.useMemo(
+    () => Array.from({ length: WINDOW_DAYS }, (_, i) => addDays(viewStart, i)),
+    [viewStart],
+  );
+
+  // Month label groups for the header (spans of days within the same month)
+  const monthGroups = React.useMemo(() => {
+    const groups: { label: string; span: number }[] = [];
+    for (const d of days) {
+      const label = d.toLocaleDateString("en", { month: "short", year: "numeric" });
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.span += 1;
+      else groups.push({ label, span: 1 });
     }
-    return result;
-  }, [baseYear, baseMonth]);
+    return groups;
+  }, [days]);
 
-  const totalDays = months.reduce((s, m) => s + m.days, 0);
-  const totalWidth = totalDays * COL_WIDTH;
-
-  const dayIndex = useMemo(() => {
-    const map: Record<string, number> = {};
-    let idx = 0;
-    for (const m of months) {
-      for (let d = 1; d <= m.days; d++) {
-        map[`${m.year}-${m.month}-${d}`] = idx++;
-      }
-    }
-    return map;
-  }, [months]);
-
-  function getColForDate(dateStr: string | null | undefined): number | null {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    return dayIndex[key] ?? null;
+  function colForDate(d: Date) {
+    return daysBetween(viewStart, d);
   }
 
-  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
-  const todayCol = dayIndex[todayKey] ?? null;
+  function getDates(item: SpaceWorkItem): { start: Date; due: Date | null } {
+    const live = liveDates[item.id];
+    if (live) return live;
+    const due = item.dueDate ? new Date(item.dueDate) : null;
+    const start = item.startDate
+      ? new Date(item.startDate)
+      : due
+        ? addDays(due, -Math.max(MIN_BAR_DAYS, 2))
+        : today;
+    return { start, due };
+  }
 
-  const HEADER_H = 48;
-  const ROW_H = 40;
-  const LABEL_W = 200;
-
-  // ─── Global mouse events (attached to window so drag doesn't break) ──────────
-  useEffect(() => {
-    if (!drag) return;
-
-    const onMove = (e: MouseEvent) => {
-      setDrag((prev) => prev ? { ...prev, offsetPx: e.clientX - prev.startX } : null);
-    };
-
-    const onUp = () => {
-      if (!drag) return;
-      // Snap to day grid on release
-      const deltaDays = Math.round(drag.offsetPx / COL_WIDTH);
-      if (deltaDays !== 0 && onUpdateItemDates) {
-        if (drag.mode === "move") {
-          onUpdateItemDates(drag.itemId, {
-            startDate: addDays(drag.origStart, deltaDays),
-            dueDate: addDays(drag.origEnd, deltaDays),
-          });
-        } else if (drag.mode === "resize-end") {
-          onUpdateItemDates(drag.itemId, { dueDate: addDays(drag.origEnd, deltaDays) });
-        } else if (drag.mode === "resize-start") {
-          onUpdateItemDates(drag.itemId, { startDate: addDays(drag.origStart, deltaDays) });
-        }
-      }
-      setDrag(null);
-    };
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [drag, onUpdateItemDates]);
-
-  function startDrag(e: React.MouseEvent, item: SpaceWorkItem, mode: DragMode) {
-    e.preventDefault();
+  function beginDrag(e: React.PointerEvent, item: SpaceWorkItem, mode: DragState["mode"]) {
     e.stopPropagation();
-    const fallback = toISODate(today);
-    setDrag({
-      itemId: item.id,
-      mode,
-      startX: e.clientX,
-      origStart: item.startDate ?? item.dueDate ?? fallback,
-      origEnd: item.dueDate ?? item.startDate ?? fallback,
-      offsetPx: 0,
-    });
+    e.preventDefault();
+    const { start, due } = getDates(item);
+    const state: DragState = { itemId: item.id, mode, startClientX: e.clientX, origStartDate: start, origDueDate: due };
+    dragRef.current = state;
+    setDrag(state);
+    window.addEventListener("pointermove", onDragMove);
+    window.addEventListener("pointerup", onDragEnd);
   }
 
-  // ─── Render each bar ────────────────────────────────────────────────────────
-  function resolveBarDates(item: SpaceWorkItem): { resolvedStart: string; resolvedEnd: string; pixelOffset: number; startOffset: number; endOffset: number } {
-    const fallback = toISODate(today);
-    const origStart = item.startDate ?? item.dueDate ?? fallback;
-    const origEnd = item.dueDate ?? item.startDate ?? fallback;
+  function onDragMove(e: PointerEvent) {
+    const state = dragRef.current;
+    if (!state) return;
+    const deltaDays = Math.round((e.clientX - state.startClientX) / DAY_W);
+    let nextStart = state.origStartDate;
+    let nextDue: Date | null = state.origDueDate;
 
-    const isDraggingThis = drag?.itemId === item.id;
-    const offsetPx = isDraggingThis ? drag!.offsetPx : 0;
-    const deltaDays = Math.round(offsetPx / COL_WIDTH);
-
-    // For tooltip & visual: smooth pixel offset for the bar, snapped dates for labels
-    let resolvedStart = origStart;
-    let resolvedEnd = origEnd;
-
-    if (isDraggingThis && deltaDays !== 0) {
-      if (drag!.mode === "move") {
-        resolvedStart = addDays(drag!.origStart, deltaDays);
-        resolvedEnd = addDays(drag!.origEnd, deltaDays);
-      } else if (drag!.mode === "resize-end") {
-        resolvedEnd = addDays(drag!.origEnd, deltaDays);
-      } else if (drag!.mode === "resize-start") {
-        resolvedStart = addDays(drag!.origStart, deltaDays);
-      }
+    if (state.mode === "move") {
+      nextStart = addDays(state.origStartDate, deltaDays);
+      nextDue = state.origDueDate ? addDays(state.origDueDate, deltaDays) : null;
+    } else if (state.mode === "resize-start") {
+      const maxStart = state.origDueDate ? addDays(state.origDueDate, -MIN_BAR_DAYS) : addDays(today, 3650);
+      let candidate = addDays(state.origStartDate, deltaDays);
+      if (state.origDueDate && candidate > maxStart) candidate = maxStart;
+      nextStart = candidate;
+    } else if (state.mode === "resize-end") {
+      const baseline = state.origDueDate ?? addDays(state.origStartDate, OPEN_ENDED_DAYS);
+      const minDue = addDays(state.origStartDate, MIN_BAR_DAYS);
+      let candidate = addDays(baseline, deltaDays);
+      if (candidate < minDue) candidate = minDue;
+      nextDue = candidate;
     }
 
-    return {
-      resolvedStart,
-      resolvedEnd,
-      pixelOffset: offsetPx,
-      startOffset: drag?.mode === "move" || drag?.mode === "resize-start" ? offsetPx : 0,
-      endOffset: drag?.mode === "move" || drag?.mode === "resize-end" ? offsetPx : 0,
-    };
+    setLiveDates((prev) => ({ ...prev, [state.itemId]: { start: nextStart, due: nextDue } }));
   }
+
+  function onDragEnd() {
+    window.removeEventListener("pointermove", onDragMove);
+    window.removeEventListener("pointerup", onDragEnd);
+    const state = dragRef.current;
+    dragRef.current = null;
+    setDrag(null);
+    if (!state) return;
+    const final = liveDates[state.itemId];
+    if (final) {
+      onUpdateItemDates?.(state.itemId, {
+        startDate: toISODate(final.start),
+        dueDate: final.due ? toISODate(final.due) : null,
+      });
+    }
+  }
+
+  React.useEffect(() => {
+    return () => {
+      window.removeEventListener("pointermove", onDragMove);
+      window.removeEventListener("pointerup", onDragEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const todayCol = colForDate(today);
 
   return (
-    <div className={cn("flex h-full flex-col font-semibold select-none", drag && "cursor-grabbing")}>
+    <div className="flex h-full flex-col overflow-hidden font-semibold">
       {/* Controls */}
       <div className="flex items-center gap-2 border-b border-border-subtle bg-panel px-4 py-2.5">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOffsetMonths((o) => o - 1)}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goPrev}>
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
-        <span className="text-[13px] font-semibold text-foreground min-w-[140px] text-center">
-          {new Date(baseYear, baseMonth).toLocaleDateString("en", { month: "long", year: "numeric" })}
-          {MONTHS_SHOWN > 1 &&
-            ` – ${new Date(baseYear, baseMonth + MONTHS_SHOWN - 1).toLocaleDateString("en", { month: "long", year: "numeric" })}`}
+        <span className="min-w-[180px] text-center text-[13px] font-semibold text-foreground">
+          {days[0].toLocaleDateString("en", { month: "short", day: "numeric" })} – {days[days.length - 1].toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}
         </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOffsetMonths((o) => o + 1)}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goNext}>
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="sm" className="ml-2 h-7 text-[12px]" onClick={() => setOffsetMonths(0)}>
+        <Button variant="outline" size="sm" className="ml-2 h-7 text-[12px]" onClick={goToday}>
           Today
         </Button>
       </div>
 
-      {/* Gantt area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Frozen label column */}
         <div className="shrink-0 overflow-y-auto scroll-thin border-r border-border-subtle" style={{ width: LABEL_W }}>
-          <div style={{ height: HEADER_H }} className="border-b border-border-subtle bg-panel px-3 flex items-end pb-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Item</span>
+          <div className="flex items-end border-b border-border-subtle bg-panel px-3 pb-1.5" style={{ height: 56 }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Work</span>
           </div>
           {items.map((item) => {
             const cfg = WORK_ITEM_TYPES[item.type] ?? WORK_ITEM_TYPES.task;
@@ -213,193 +183,142 @@ export function TimelineView({ items, onUpdateItemDates }: TimelineViewProps) {
             return (
               <div key={item.id} className="flex items-center gap-1.5 border-b border-border-subtle px-3" style={{ height: ROW_H }}>
                 <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: cfg.color }} />
-                <span className="truncate text-[12px] text-foreground">{item.title}</span>
+                <span className="truncate text-[12.5px] text-foreground">{item.title}</span>
               </div>
             );
           })}
           {items.length === 0 && (
             <div className="flex items-center justify-center p-6">
-              <span className="text-[12px] text-muted">No items</span>
+              <span className="text-[12px] text-muted">No work items</span>
             </div>
           )}
         </div>
 
-        {/* Scrollable timeline */}
+        {/* Scrollable grid — everything below shares the same fixed totalWidth */}
         <div className="flex-1 overflow-auto scroll-thin">
-          <div style={{ width: totalWidth + "px", minWidth: "100%" }}>
-            {/* Month + day headers */}
-            <div style={{ height: HEADER_H }} className="sticky top-0 z-10 border-b border-border-subtle bg-panel">
+          <div style={{ width: totalWidth }}>
+            {/* Header */}
+            <div className="sticky top-0 z-10 border-b border-border-subtle bg-panel" style={{ height: 56 }}>
               <div className="flex" style={{ height: 22 }}>
-                {months.map((m) => (
-                  <div key={`${m.year}-${m.month}`} style={{ width: m.days * COL_WIDTH }} className="border-r border-border-subtle px-2 pt-1 text-[11px] font-semibold text-foreground">
-                    {new Date(m.year, m.month).toLocaleDateString("en", { month: "short", year: "numeric" })}
+                {monthGroups.map((g, i) => (
+                  <div
+                    key={i}
+                    style={{ width: g.span * DAY_W }}
+                    className="truncate border-r border-border-subtle px-2 pt-1 text-[11px] font-semibold text-foreground"
+                  >
+                    {g.label}
                   </div>
                 ))}
               </div>
               <div className="flex" style={{ height: 26 }}>
-                {months.flatMap((m) =>
-                  Array.from({ length: m.days }, (_, i) => {
-                    const isToday = today.getFullYear() === m.year && today.getMonth() === m.month && today.getDate() === i + 1;
-                    return (
-                      <div
-                        key={`${m.year}-${m.month}-${i}`}
-                        style={{ width: COL_WIDTH }}
-                        className={cn("flex items-center justify-center border-r border-border-subtle text-[9.5px]", isToday ? "bg-accent text-white font-bold rounded-t" : "text-muted")}
-                      >
-                        {i + 1}
-                      </div>
-                    );
-                  })
-                )}
+                {days.map((d, i) => {
+                  const isToday = i === todayCol;
+                  return (
+                    <div
+                      key={i}
+                      style={{ width: DAY_W }}
+                      className={cn(
+                        "flex items-center justify-center border-r border-border-subtle text-[9.5px]",
+                        isToday ? "rounded-t bg-accent font-bold text-white" : "text-muted",
+                      )}
+                    >
+                      {d.getDate()}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Rows */}
-            <div className="relative" style={{ height: Math.max(items.length * ROW_H, 360) }}>
-              {/* Weekend shading */}
-              {months.flatMap((m) =>
-                Array.from({ length: m.days }, (_, i) => {
-                  const dow = new Date(m.year, m.month, i + 1).getDay();
-                  if (dow === 0 || dow === 6) {
-                    const col = dayIndex[`${m.year}-${m.month}-${i + 1}`] ?? 0;
-                    return <div key={`we-${m.year}-${m.month}-${i}`} className="absolute top-0 h-full bg-foreground/[0.05]" style={{ left: col * COL_WIDTH, width: COL_WIDTH }} />;
-                  }
-                  return null;
-                })
-              )}
-
-              {/* Today line */}
-              {todayCol !== null && (
-                <div className="absolute top-0 h-full w-px bg-accent" style={{ left: (todayCol + 0.5) * COL_WIDTH }} />
-              )}
-
-              {/* Item bars */}
-              {items.map((item, rowIdx) => {
-                const cfg = WORK_ITEM_TYPES[item.type] ?? WORK_ITEM_TYPES.task;
-                const statusLabel = DEFAULT_COLUMNS.find((c) => c.id === item.status)?.label ?? item.status;
-                const { resolvedStart, resolvedEnd, startOffset, endOffset } = resolveBarDates(item);
-
-                const startCol = getColForDate(resolvedStart);
-                const endCol = getColForDate(resolvedEnd);
-                if (startCol === null && endCol === null) return null;
-
-                // Pixel positions (smooth during drag)
-                const baseLeft = (startCol ?? endCol ?? 0) * COL_WIDTH;
-                const baseRight = ((endCol ?? startCol ?? 0) + 1) * COL_WIDTH;
-
-                const isDraggingThis = drag?.itemId === item.id;
-
-                // Smooth pixel offsets while dragging
-                const smoothLeft = isDraggingThis
-                  ? drag!.mode === "move"
-                    ? baseLeft  // already resolved via deltaDays above
-                    : drag!.mode === "resize-start"
-                      ? baseLeft  // resolved above
-                      : baseLeft
-                  : baseLeft;
-
-                const barWidth = Math.max(baseRight - baseLeft, COL_WIDTH * 2);
-                const dayCount = daysBetween(resolvedStart, resolvedEnd);
-
+            <div className="relative" style={{ height: Math.max(items.length * ROW_H, 240) }}>
+              {/* Weekend shading — spans full grid height */}
+              {days.map((d, i) => {
+                const dow = d.getDay();
+                if (dow !== 0 && dow !== 6) return null;
                 return (
                   <div
-                    key={item.id}
-                    className="absolute flex items-center"
-                    style={{
-                      top: rowIdx * ROW_H + 6,
-                      left: smoothLeft,
-                      height: ROW_H - 12,
-                      width: barWidth,
-                      zIndex: isDraggingThis ? 30 : 1,
-                      willChange: isDraggingThis ? "transform" : undefined,
-                    }}
-                  >
-                    {/* ── Jira-style date tooltip: left (start) ── */}
-                    <AnimatePresence>
-                      {isDraggingThis && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 4, scale: 0.92 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 4, scale: 0.92 }}
-                          transition={{ duration: 0.12 }}
-                          className="timeline-tooltip timeline-tooltip--left"
-                        >
-                          {formatDateLabel(resolvedStart)}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Left resize handle */}
-                    <div
-                      className="absolute left-0 top-0 h-full w-2.5 z-10 cursor-col-resize rounded-l-md"
-                      onMouseDown={(e) => startDrag(e, item, "resize-start")}
-                    >
-                      <div className="absolute left-1 top-1/2 -translate-y-1/2 w-0.5 h-3 rounded-full bg-white/50" />
-                    </div>
-
-                    {/* Main bar */}
-                    <div
-                      className={cn(
-                        "flex h-full w-full items-center gap-1.5 rounded-md px-3 text-[11px] font-semibold text-white truncate",
-                        isDraggingThis
-                          ? "shadow-xl ring-2 ring-white/50 cursor-grabbing opacity-90"
-                          : "shadow-sm hover:shadow-md cursor-grab",
-                      )}
-                      style={{ backgroundColor: cfg.color, transition: isDraggingThis ? "none" : "box-shadow 0.15s" }}
-                      title={`${item.title} · ${statusLabel}`}
-                      onMouseDown={(e) => startDrag(e, item, "move")}
-                    >
-                      <span className="truncate">{item.title}</span>
-                    </div>
-
-                    {/* Right resize handle */}
-                    <div
-                      className="absolute right-0 top-0 h-full w-2.5 z-10 cursor-col-resize rounded-r-md"
-                      onMouseDown={(e) => startDrag(e, item, "resize-end")}
-                    >
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2 w-0.5 h-3 rounded-full bg-white/50" />
-                    </div>
-
-                    {/* ── Jira-style date tooltip: right (end + days) ── */}
-                    <AnimatePresence>
-                      {isDraggingThis && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 4, scale: 0.92 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 4, scale: 0.92 }}
-                          transition={{ duration: 0.12 }}
-                          className="timeline-tooltip timeline-tooltip--right"
-                        >
-                          {formatDateLabel(resolvedEnd)}&nbsp;
-                          <span className="timeline-tooltip__days">({dayCount} {dayCount === 1 ? "day" : "days"})</span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                    key={`weekend-${i}`}
+                    className="absolute top-0 h-full bg-foreground/[0.04]"
+                    style={{ left: i * DAY_W, width: DAY_W }}
+                  />
                 );
               })}
 
-              {/* Row grid lines */}
-              {items.map((_, i) => (
-                <div key={`row-${i}`} className="absolute w-full border-b border-border-subtle" style={{ top: (i + 1) * ROW_H - 1 }} />
+              {/* Today line */}
+              {todayCol >= 0 && todayCol < WINDOW_DAYS && (
+                <div className="absolute top-0 h-full w-px bg-accent" style={{ left: (todayCol + 0.5) * DAY_W }} />
+              )}
+
+              {/* Vertical day gridlines — full height, full width, never stop early */}
+              {days.map((_, i) => (
+                <div key={`col-${i}`} className="absolute top-0 h-full border-r border-border-subtle" style={{ left: (i + 1) * DAY_W }} />
               ))}
 
-              {/* Col grid lines */}
-              {months.flatMap((m) =>
-                Array.from({ length: m.days }, (_, i) => {
-                  const col = dayIndex[`${m.year}-${m.month}-${i + 1}`] ?? 0;
-                  return <div key={`col-${m.year}-${m.month}-${i}`} className="absolute top-0 h-full border-r border-border-subtle" style={{ left: (col + 1) * COL_WIDTH }} />;
-                })
-              )}
+              {/* Horizontal row lines — explicit width matches container, spans full grid */}
+              {items.map((_, i) => (
+                <div key={`row-${i}`} className="absolute border-b border-border-subtle" style={{ top: (i + 1) * ROW_H - 1, left: 0, width: totalWidth }} />
+              ))}
+
+              {/* Bars */}
+              {items.map((item, rowIdx) => {
+                const { start, due } = getDates(item);
+                const isOpenEnded = !due;
+                const effectiveDue = due ?? addDays(start, OPEN_ENDED_DAYS);
+                const startCol = colForDate(start);
+                const dueCol = colForDate(effectiveDue);
+                const left = Math.max(startCol, -50) * DAY_W;
+                const width = Math.max((dueCol - startCol + 1) * DAY_W, DAY_W);
+                const isDragging = drag?.itemId === item.id;
+
+                return (
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger>
+                      <div
+                        className="absolute flex items-center"
+                        style={{ top: rowIdx * ROW_H + 8, left, width, height: ROW_H - 16 }}
+                      >
+                        <div
+                          onPointerDown={(e) => beginDrag(e, item, "move")}
+                          className={cn(
+                            "group relative flex h-full w-full cursor-grab items-center overflow-hidden rounded-md border transition-shadow active:cursor-grabbing",
+                            "border-accent/40 bg-accent/20 hover:bg-accent/28",
+                            isDragging && "shadow-[0_4px_14px_rgba(12,143,143,0.35)] ring-1 ring-accent",
+                            isOpenEnded && "bg-gradient-to-r from-accent/24 via-accent/16 to-transparent border-r-0",
+                          )}
+                        >
+                          {/* Left resize handle */}
+                          <div
+                            onPointerDown={(e) => beginDrag(e, item, "resize-start")}
+                            className="absolute left-0 top-0 flex h-full w-2 shrink-0 cursor-ew-resize items-center justify-center opacity-0 group-hover:opacity-100"
+                          >
+                            <GripVertical className="h-3 w-3 text-accent" />
+                          </div>
+
+                          <span className="truncate px-3 text-[11.5px] font-semibold text-accent">{item.title}</span>
+
+                          {/* Right resize handle — always present; dragging it sets/updates the due date */}
+                          <div
+                            onPointerDown={(e) => beginDrag(e, item, "resize-end")}
+                            className="absolute right-0 top-0 flex h-full w-2 shrink-0 cursor-ew-resize items-center justify-center opacity-0 group-hover:opacity-100"
+                          >
+                            <GripVertical className="h-3 w-3 text-accent" />
+                          </div>
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {fmt(start)} → {isOpenEnded ? "Ongoing" : fmt(due!)}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
             </div>
 
-            {/* Empty state */}
             {items.length === 0 && (
               <div className="flex h-40 items-center justify-center">
                 <div className="text-center">
-                  <CalendarDays className="mx-auto mb-2 h-8 w-8 text-muted" />
-                  <p className="text-[13px] text-muted">No items to display on the timeline.</p>
-                  <p className="mt-1 text-[11.5px] text-muted/70">Add items with due dates to see them here.</p>
+                  <Layers className="mx-auto mb-2 h-8 w-8 text-muted" />
+                  <p className="text-[13px] text-muted">No work items on this board yet.</p>
                 </div>
               </div>
             )}
