@@ -1,23 +1,19 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: backend
-  namespace: unify
+rules:
+  - host: your-domain.com
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: frontend
+              port:
+                number: 3000
 
-spec:
-  ingressClassName: traefik
-
-  rules:
-    - host: your-domain.com
-
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-
-            backend:
-              service:
-                name: gateway
-
-                port:
-                  number: 80
+        - path: /api/v1
+          pathType: Prefix
+          backend:
+            service:
+              name: gateway
+              port:
+                number: 80
