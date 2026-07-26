@@ -15,6 +15,13 @@
       "when": 1784855747516,
       "tag": "0001_github_oauth_and_prefs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785050051147,
+      "tag": "0002_smart_malcolm_colcord",
+      "breakpoints": true
     }
   ]
 }
