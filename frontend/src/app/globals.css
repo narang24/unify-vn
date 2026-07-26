@@ -671,3 +671,164 @@ a {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ─── CodeBlock ──────────────────────────────────────────────────────────── */
+
+.code-block-root {
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--dark-teal) 20%, transparent);
+  overflow: hidden;
+  font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--dark-teal) 10%, transparent);
+}
+
+/* Header bar */
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.9rem;
+  background: color-mix(in srgb, var(--mint) 80%, var(--dark-teal) 20%);
+  border-bottom: 1px solid color-mix(in srgb, var(--dark-teal) 18%, transparent);
+  gap: 0.5rem;
+}
+
+.code-block-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.code-block-header-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--dark-teal);
+  flex-shrink: 0;
+}
+
+.code-block-filename {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1a3a38;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.code-block-lang-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dark-teal) 14%, transparent);
+  color: var(--dark-teal);
+  border: 1px solid color-mix(in srgb, var(--dark-teal) 22%, transparent);
+  flex-shrink: 0;
+}
+
+.code-block-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.65rem;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--dark-teal);
+  background: color-mix(in srgb, var(--dark-teal) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dark-teal) 22%, transparent);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s, transform 0.12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.code-block-copy-btn:hover {
+  background: color-mix(in srgb, var(--dark-teal) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.code-block-copy-btn:active {
+  transform: translateY(0);
+}
+
+.code-block-copy-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* Code body */
+.code-block-body {
+  background: var(--mint);
+  overflow-x: auto;
+}
+
+.code-block-pre {
+  margin: 0;
+  padding: 0.6rem 0;
+  background: transparent;
+}
+
+.code-block-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: max-content;
+}
+
+/* Line row */
+.code-block-row {
+  transition: background 0.12s;
+}
+
+.code-block-row:hover {
+  background: color-mix(in srgb, var(--dark-teal) 7%, transparent);
+}
+
+/* Highlighted line */
+.code-block-row--highlighted {
+  background: color-mix(in srgb, var(--dark-teal) 13%, transparent);
+  border-left: 3px solid var(--dark-teal);
+}
+
+.code-block-row--highlighted:hover {
+  background: color-mix(in srgb, var(--dark-teal) 18%, transparent);
+}
+
+/* Line number cell */
+.code-block-line-num {
+  user-select: none;
+  text-align: right;
+  padding: 0 1rem 0 1.1rem;
+  color: color-mix(in srgb, var(--dark-teal) 55%, #1a3a38);
+  font-size: 11.5px;
+  width: 1%;
+  white-space: nowrap;
+  vertical-align: top;
+  border-right: 1px solid color-mix(in srgb, var(--dark-teal) 16%, transparent);
+}
+
+/* Code content cell */
+.code-block-line-content {
+  padding: 0 1.4rem 0 1.1rem;
+  white-space: pre;
+  color: #1a3a38;
+  vertical-align: top;
+}
+
+.code-block-line-content code {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}

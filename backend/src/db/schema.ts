@@ -82,10 +82,8 @@ export const sprints = pgTable("sprints", {
   id: uuid("id").defaultRandom().primaryKey(),
   spaceId: uuid("space_id").notNull().references(() => spaces.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  status: text("status")
-    .$type<"planned" | "active" | "completed">()
-    .notNull()
-    .default("planned"),
+  goal: text("goal"),                       // ← add this
+  status: text("status").$type<"planned" | "active" | "completed">().notNull().default("planned"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -186,6 +184,17 @@ export const incidents = pgTable("incidents", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const spaceMembers = pgTable("space_members", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  spaceId: uuid("space_id").notNull().references(() => spaces.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }), // null until invite accepted
+  email: text("email").notNull(),
+  role: text("role").$type<"viewer" | "editor" | "admin">().notNull().default("editor"),
+  status: text("status").$type<"active" | "pending">().notNull().default("pending"),
+  invitedBy: uuid("invited_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -205,3 +214,4 @@ export type Deployment = typeof deployments.$inferSelect;
 export type NewDeployment = typeof deployments.$inferInsert;
 export type Incident = typeof incidents.$inferSelect;
 export type NewIncident = typeof incidents.$inferInsert;
+export type SpaceMember = typeof spaceMembers.$inferSelect;

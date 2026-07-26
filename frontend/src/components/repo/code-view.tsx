@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRef, useState, useEffect } from "react";
+// import { CodeBlock } from "@/components/ui/code-block";
 import { ChevronRight, GitBranch, Check, Loader2 } from "lucide-react";
 import {
     DropdownMenu,
@@ -46,7 +47,7 @@ export function CodeView({
     useEffect(() => {
         getRepoBranches(repo.id)
             .then((b) => { if (b.length) setBranches(b.map((x) => x.name)); })
-            .catch(() => {});
+            .catch(() => { });
     }, [repo.id]);
 
     // Load the real file tree for the selected branch.
@@ -167,7 +168,7 @@ export function CodeView({
                         <pre
                             ref={codeRef}
                             onMouseUp={handleMouseUp}
-                            className="min-h-full whitespace-pre p-4 text-[12.5px] leading-relaxed text-foreground selection:bg-accent/25"
+                            className="min-h-full whitespace-pre p-4 text-[12.5px] leading-relaxed text-foreground selection:bg-accent/25 font-semibold"
                         >
                             <code>{activeFile.content ?? "// Empty file"}</code>
                         </pre>
@@ -203,4 +204,18 @@ function findFirstFile(nodes: RepoFileNode[]): RepoFileNode | null {
         }
     }
     return null;
+}
+
+function getLanguage(filename: string): string {
+    const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+    const map: Record<string, string> = {
+        ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx",
+        py: "python", rb: "ruby", go: "go", rs: "rust", java: "java",
+        cs: "c#", cpp: "c++", c: "c", html: "html", css: "css",
+        scss: "scss", json: "json", yaml: "yaml", yml: "yaml",
+        md: "markdown", sh: "shell", bash: "bash", sql: "sql",
+        toml: "toml", xml: "xml", php: "php", swift: "swift",
+        kt: "kotlin", dart: "dart",
+    };
+    return map[ext] ?? ext ?? "plaintext";
 }

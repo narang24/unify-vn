@@ -11,17 +11,14 @@ sprintsRouter.use(requireAuth);
 // POST /api/v1/spaces/:id/sprints — create a sprint in a space
 sprintsRouter.post("/spaces/:id/sprints", async (req: AuthedRequest, res) => {
   try {
-    const { name, startDate, endDate } = req.body as {
-      name?: string;
-      startDate?: string;
-      endDate?: string;
-    };
+    const { name, goal, startDate, endDate } = req.body as { name?: string; goal?: string; startDate?: string; endDate?: string };
 
     const [created] = await db
       .insert(sprints)
       .values({
         spaceId: req.params.id as string,
         name: name?.trim() || "Sprint 1",
+        goal: goal?.trim() || null,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
       })
@@ -106,14 +103,10 @@ sprintsRouter.post("/sprints/:id/complete", async (req: AuthedRequest, res) => {
 // PATCH /api/v1/sprints/:id — update sprint name/dates
 sprintsRouter.patch("/sprints/:id", async (req: AuthedRequest, res) => {
   try {
-    const { name, startDate, endDate } = req.body as {
-      name?: string;
-      startDate?: string;
-      endDate?: string;
-    };
-
+    const { name, goal, startDate, endDate } = req.body as { name?: string; goal?: string; startDate?: string; endDate?: string };
     const set: Record<string, unknown> = {};
     if (name?.trim()) set.name = name.trim();
+    if (goal !== undefined) set.goal = goal;
     if (startDate) set.startDate = new Date(startDate);
     if (endDate) set.endDate = new Date(endDate);
 

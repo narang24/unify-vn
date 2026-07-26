@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserPlus, Mail, Check, X, Crown, Shield, User, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import * as api from "@/lib/api";
 
 type Role = "viewer" | "editor" | "admin";
 
@@ -38,14 +39,22 @@ interface AddMembersDialogProps {
   open: boolean;
   onClose: () => void;
   spaceName: string;
+  spaceId: string;   // ← add this
 }
 
-export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogProps) {
+export function AddMembersDialog({ open, onClose, spaceName, spaceId }: AddMembersDialogProps) {
   const [members, setMembers] = useState<Member[]>(SEED_MEMBERS);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role | null>(null);
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open || !spaceId) return;
+    api.listSpaceMembers(spaceId).then((list) =>
+      setMembers(list.map((m) => ({ id: m.id, name: m.email.split("@")[0], email: m.email, role: m.role, status: m.status })))
+    ).catch(() => { });
+  }, [open, spaceId]);
 
   function handleInvite() {
     const trimmed = email.trim().toLowerCase();
@@ -78,14 +87,19 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
       setEmail("");
       setInviting(false);
     }, 700);
+    api.inviteSpaceMember(spaceId, trimmed, role)
+      .then((m) => setMembers((prev) => [...prev, { id: m.id, name: trimmed.split("@")[0], email: trimmed, role: m.role, status: m.status }]))
+      .catch(() => setError("Couldn't send invite."))
+      .finally(() => { setInviting(false); setEmail(""); });
   }
 
   function removeM(id: string) {
     setMembers((m) => m.filter((mem) => mem.id !== id));
+    api.removeSpaceMember(id).catch(() => { });
   }
-
   function changeRole(id: string, newRole: Role) {
     setMembers((m) => m.map((mem) => (mem.id === id ? { ...mem, role: newRole } : mem)));
+    api.updateSpaceMemberRole(id, newRole).catch(() => { });
   }
 
   if (!open) return null;
@@ -147,9 +161,9 @@ export function AddMembersDialog({ open, onClose, spaceName }: AddMembersDialogP
                 {(Object.entries(ROLE_CONFIG) as [Role, typeof ROLE_CONFIG[Role]][]).map(([r, cfg]) => {
                   const isSelected = r === role;
                   return (
-                    <DropdownMenuItem 
-                      key={r} 
-                      onClick={() => setRole(isSelected ? null : r)} 
+                    <DropdownMenuItem
+                      key={r}
+                      onClick={() => setRole(isSelected ? null : r)}
                       className={cn("font-semibold", isSelected && "bg-accent/10 text-accent")}
                     >
                       {cfg.label}

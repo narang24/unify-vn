@@ -105,6 +105,17 @@ function mapApiRepo(r: ApiRepository): ConnectedRepository {
     avatarColor: r.avatarColor,
   };
 }
+function mapApiSprint(s: api.ApiSprint): Sprint {
+  return {
+    id: s.id,
+    name: s.name,
+    goal: (s as any).goal ?? null,
+    startDate: s.startDate ?? "",
+    endDate: s.endDate ?? "",
+    status: s.status === "planned" ? "planning" : s.status,
+    spaceId: s.spaceId,
+  };
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -155,7 +166,7 @@ export default function DashboardPage() {
     // Return to the board
     setIntelliOpen(false);
     setActiveNav(null);
-    
+
     // Set the changes for the space topbar to consume, ensure ID is present
     setIntelliChanges({ ...payload, id: payload.id ?? intelliContext?.id });
   }
@@ -213,7 +224,7 @@ export default function DashboardPage() {
       });
       const mapped = mapApiRepo(created);
       setRepositories((r) => [mapped, ...r.filter((x) => x.id !== mapped.id)]);
-      await api.updateSpace(activeSpaceId, { repositoryId: mapped.id }).catch(() => {});
+      await api.updateSpace(activeSpaceId, { repositoryId: mapped.id }).catch(() => { });
       setWorkspaces((all) =>
         all.map((ws) =>
           ws.id !== activeWorkspaceId
@@ -258,7 +269,7 @@ export default function DashboardPage() {
       if (list.length === 0) {
         // First run → create a real Default Workspace + Kanban space.
         const ws = await api.createWorkspace("Default Workspace");
-        await api.createSpace(ws.id, { name: "My Kanban Space", kind: "kanban" }).catch(() => {});
+        await api.createSpace(ws.id, { name: "My Kanban Space", kind: "kanban" }).catch(() => { });
         list = [ws];
       }
       setWorkspaces(list.map((w) => ({ id: w.id, name: w.name, spaces: [] })));
@@ -290,16 +301,16 @@ export default function DashboardPage() {
             ws.id !== activeWorkspaceId
               ? ws
               : {
-                  ...ws,
-                  spaces: mapped.map((sp) => {
-                    const prev = ws.spaces.find((e) => e.id === sp.id);
-                    return prev ? { ...sp, workItems: prev.workItems } : sp;
-                  }),
-                },
+                ...ws,
+                spaces: mapped.map((sp) => {
+                  const prev = ws.spaces.find((e) => e.id === sp.id);
+                  return prev ? { ...sp, workItems: prev.workItems } : sp;
+                }),
+              },
           ),
         );
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [activeWorkspaceId]);
 
   // Fetch real work items for the active space.
@@ -316,13 +327,27 @@ export default function DashboardPage() {
           })),
         );
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [activeSpaceId]);
 
   useEffect(() => {
     const ws = workspaces.find((w) => w.id === activeWorkspaceId);
     if (!activeSpaceId) setActiveSpaceId(ws?.spaces[0]?.id ?? null);
   }, [activeWorkspaceId, workspaces, activeSpaceId]);
+
+  // Fetch real sprints whenever the active space changes (mirrors work items effect)
+  useEffect(() => {
+    if (!activeSpaceId) return;
+    api.listSprints(activeSpaceId)
+      .then((sprints) => {
+        const mapped = sprints.map(mapApiSprint);
+        setWorkspaces((all) => all.map((ws) => ({
+          ...ws,
+          spaces: ws.spaces.map((sp) => (sp.id === activeSpaceId ? { ...sp, sprints: mapped } : sp)),
+        })));
+      })
+      .catch(() => { });
+  }, [activeSpaceId]);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
   const activeSpace = activeWorkspace?.spaces.find((s) => s.id === activeSpaceId) ?? activeWorkspace?.spaces[0];
@@ -380,7 +405,7 @@ export default function DashboardPage() {
         })),
       );
       toast({ title: "Work item updated", description: payload.title, variant: "success" });
-      api.updateWorkItem(payload.id, payload as Partial<ApiWorkItem>).catch(() => {});
+      api.updateWorkItem(payload.id, payload as Partial<ApiWorkItem>).catch(() => { });
       return;
     }
 
@@ -416,7 +441,7 @@ export default function DashboardPage() {
       })),
     );
     toast({ title: "Work item deleted", variant: "success" });
-    api.deleteWorkItem(id).catch(() => {});
+    api.deleteWorkItem(id).catch(() => { });
   }
 
   async function createWorkItemFromRepo(title: string, type: WorkItemType, attachments?: { id: string; name: string; meta?: string }[]) {
@@ -453,7 +478,7 @@ export default function DashboardPage() {
         })),
       })),
     );
-    api.updateWorkItem(itemId, { status: toStatus }).catch(() => {});
+    api.updateWorkItem(itemId, { status: toStatus }).catch(() => { });
   }
 
   async function addColumn(label: string) {
@@ -480,75 +505,112 @@ export default function DashboardPage() {
   }
 
   // ── Sprints ─────────────────────────────────────────────────────────────
-  function createSprint(payload: SprintPayload) {
+  async function createSprint(payload: SprintPayload) {
     if (!activeWorkspaceId || !activeSpaceId) return;
-    const newSprint: Sprint = {
-      id: uid("spr"),
-      ...payload,
-    };
-    setWorkspaces((all) =>
-      all.map((ws) =>
-        ws.id !== activeWorkspaceId
-          ? ws
-          : {
-              ...ws,
-              spaces: ws.spaces.map((sp) =>
-                sp.id !== activeSpaceId
-                  ? sp
-                  : { ...sp, sprints: [...(sp.sprints || []), newSprint] },
-              ),
-            },
-      ),
-    );
+    try {
+      const created = await api.createSprint(activeSpaceId, {
+        name: payload.name,
+        goal: payload.goal ?? undefined,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+      } as any);
+      const sprint = mapApiSprint(created);
+      setWorkspaces((all) => all.map((ws) => ws.id !== activeWorkspaceId ? ws : {
+        ...ws, spaces: ws.spaces.map((sp) => sp.id !== activeSpaceId ? sp : { ...sp, sprints: [...(sp.sprints || []), sprint] }),
+      }));
+    } catch {
+      toast({ title: "Couldn't create sprint", variant: "error" });
+    }
   }
 
-  function editSprint(sprintId: string, payload: Partial<Sprint>) {
+  async function editSprint(sprintId: string, payload: Partial<Sprint>) {
     if (!activeWorkspaceId || !activeSpaceId) return;
-    setWorkspaces((all) =>
-      all.map((ws) =>
-        ws.id !== activeWorkspaceId
-          ? ws
-          : {
-              ...ws,
-              spaces: ws.spaces.map((sp) =>
-                sp.id !== activeSpaceId
-                  ? sp
-                  : {
-                      ...sp,
-                      sprints: (sp.sprints || []).map((s) => (s.id === sprintId ? { ...s, ...payload } : s)),
-                    },
-              ),
-            },
-      ),
-    );
+    try {
+      const updated = await api.updateSprint(sprintId, {
+        name: payload.name,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+      } as any);
+      const sprint = mapApiSprint(updated);
+      setWorkspaces((all) => all.map((ws) => ws.id !== activeWorkspaceId ? ws : {
+        ...ws, spaces: ws.spaces.map((sp) => sp.id !== activeSpaceId ? sp : {
+          ...sp, sprints: (sp.sprints || []).map((s) => (s.id === sprintId ? sprint : s)),
+        }),
+      }));
+    } catch {
+      toast({ title: "Couldn't update sprint", variant: "error" });
+    }
   }
 
   function deleteSprint(sprintId: string) {
     if (!activeWorkspaceId || !activeSpaceId) return;
+    setWorkspaces((all) => all.map((ws) => ws.id !== activeWorkspaceId ? ws : {
+      ...ws, spaces: ws.spaces.map((sp) => sp.id !== activeSpaceId ? sp : { ...sp, sprints: (sp.sprints || []).filter((s) => s.id !== sprintId) }),
+    }));
+    api.deleteSprint(sprintId).catch(() => toast({ title: "Couldn't delete sprint", variant: "error" }));
+  }
+
+  // Small local-only state setter — no API call here, since startSprintAction/
+  // completeSprintAction below call the dedicated /start and /complete endpoints
+  // separately and just need to reflect the new status immediately in the UI.
+  function setSprintStatusLocal(sprintId: string, status: Sprint["status"]) {
+    if (!activeWorkspaceId || !activeSpaceId) return;
     setWorkspaces((all) =>
       all.map((ws) =>
         ws.id !== activeWorkspaceId
           ? ws
           : {
-              ...ws,
-              spaces: ws.spaces.map((sp) =>
-                sp.id !== activeSpaceId
-                  ? sp
-                  : { ...sp, sprints: (sp.sprints || []).filter((s) => s.id !== sprintId) },
-              ),
-            },
-      ),
+            ...ws,
+            spaces: ws.spaces.map((sp) =>
+              sp.id !== activeSpaceId
+                ? sp
+                : {
+                  ...sp,
+                  sprints: (sp.sprints || []).map((s) =>
+                    s.id === sprintId ? { ...s, status } : s
+                  ),
+                }
+            ),
+          }
+      )
     );
   }
 
-  function startSprint(sprintId: string) {
-    editSprint(sprintId, { status: "active" });
+  function startSprintAction(id: string) {
+    setSprintStatusLocal(id, "active");
+    api.startSprint(id).catch(() => {
+      toast({ title: "Couldn't start sprint", variant: "error" });
+      setSprintStatusLocal(id, "planning"); // revert on failure
+    });
   }
 
-  function completeSprint(sprintId: string) {
-    editSprint(sprintId, { status: "completed" });
+  function completeSprintAction(id: string) {
+    setSprintStatusLocal(id, "completed");
+    api.completeSprint(id)
+      .catch(() => {
+        toast({ title: "Couldn't complete sprint", variant: "error" });
+        setSprintStatusLocal(id, "active"); // revert on failure
+      })
+      .finally(() => {
+        // Backend moves any unfinished items back to the backlog on complete —
+        // refresh work items so the board/backlog reflect that server-side move.
+        if (activeSpaceId) {
+          api.listWorkItems(activeSpaceId)
+            .then((items) => {
+              const mapped = items.map(mapApiWorkItem);
+              setWorkspaces((all) =>
+                all.map((ws) => ({
+                  ...ws,
+                  spaces: ws.spaces.map((sp) =>
+                    sp.id === activeSpaceId ? { ...sp, workItems: mapped } : sp
+                  ),
+                }))
+              );
+            })
+            .catch(() => { });
+        }
+      });
   }
-
   function togglePinSpace(spaceId: string) {
     let nextPinned = false;
     setWorkspaces((all) =>
@@ -561,14 +623,14 @@ export default function DashboardPage() {
         }),
       })),
     );
-    api.updateSpace(spaceId, { pinned: nextPinned }).catch(() => {});
+    api.updateSpace(spaceId, { pinned: nextPinned }).catch(() => { });
   }
 
   function deleteSpace(spaceId: string) {
     setWorkspaces((all) => all.map((ws) => ({ ...ws, spaces: ws.spaces.filter((sp) => sp.id !== spaceId) })));
     if (activeSpaceId === spaceId) setActiveSpaceId(null);
     toast({ title: "Space deleted", variant: "success" });
-    api.deleteSpace(spaceId).catch(() => {});
+    api.deleteSpace(spaceId).catch(() => { });
   }
 
   // ── Reordering (drag-and-drop from the sidebar) ─────────────────────────
@@ -579,11 +641,11 @@ export default function DashboardPage() {
     setWorkspaces((all) =>
       all.map((ws) => (ws.id === workspaceId ? { ...ws, spaces: ids.map((id) => ws.spaces.find((s) => s.id === id)!).filter(Boolean) } : ws)),
     );
-    api.reorderSpaces(workspaceId, ids).catch(() => {});
+    api.reorderSpaces(workspaceId, ids).catch(() => { });
   }
   function reorderRepos(ids: string[]) {
     setRepositories((all) => ids.map((id) => all.find((r) => r.id === id)!).filter(Boolean));
-    if (activeWorkspaceId) api.reorderRepositories(activeWorkspaceId, ids).catch(() => {});
+    if (activeWorkspaceId) api.reorderRepositories(activeWorkspaceId, ids).catch(() => { });
   }
 
   async function handleEmailAuth(e: React.FormEvent) {
@@ -816,142 +878,143 @@ export default function DashboardPage() {
 
   return (
     <IncidentProvider repositories={repositories}>
-    <AppShell
-      workspaces={shellWorkspaces}
-      activeWorkspaceId={activeWorkspace?.id ?? null}
-      activeSpaceId={activeRepo || intelliOpen || activeNav ? null : activeSpace?.id ?? null}
-      greetingName={firstName}
-      fullscreen={fullscreen}
-      activeNav={activeNav}
-      onSelectNav={(nav) => setActiveNav(nav)}
-      onSelectWorkspace={(id) => {
-        setIntelliOpen(false);
-        setActiveNav(null);
-        setActiveRepoId(null);
-        setActiveWorkspaceId(id);
-        setActiveSpaceId(null);
-      }}
-      onSelectSpace={(id) => {
-        setIntelliOpen(false);
-        setActiveNav(null);
-        setActiveRepoId(null);
-        setActiveSpaceId(id);
-        pushRecent("space", id);
-      }}
-      onCreateWorkspace={() => setWorkspaceDialogOpen(true)}
-      onCreateSpace={() => setSpaceDialogOpen(true)}
-      onCreateItem={() => {
-        setEditingItem(null);
-        setItemTargetStatus("todo");
-        setItemDefaultDue(null);
-        setItemDialogOpen(true);
-      }}
-      onReorderWorkspaces={reorderWorkspaces}
-      onReorderSpaces={reorderSpaces}
-      onReorderRepos={reorderRepos}
-      repositories={repositories}
-      activeRepoId={activeRepoId}
-      onSelectRepo={selectRepo}
-      onConnectRepo={connectRepo}
-      onOpenIntelli={openIntelliWorkspace}
-      intelliActive={intelliOpen}
-      user={user}
-      onSignOut={handleSignOut}
-    >
-      {activeNav === "recent" ? (
-        <RecentsPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
-      ) : activeNav === "starred" ? (
-        <StarredPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
-      ) : activeNav === "teams" ? (
-        <TeamsPanel workspaces={shellWorkspaces} repositories={repositories} currentUser={user.fullName || user.email} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
-      ) : intelliOpen ? (
-        <UnifyIntelliWorkspace 
-          preloadedContext={intelliContext} 
-          onReviewChanges={handleReviewIntelliChanges} 
-        />
-      ) : activeRepo ? (
-        <RepoWorkspace
-          repo={activeRepo}
-          onCreateWorkItem={createWorkItemFromRepo}
-          onOpenIntelliWorkspace={openIntelliWorkspace}
-        />
-      ) : !activeSpace ? (
-        <div className="flex h-full items-center justify-center p-6 text-center">
-          <div>
-            <p className="text-sm font-medium text-foreground">Select or create a space to get started.</p>
-            <p className="mt-1 text-[12px] text-muted">
-              Spaces hold boards for epics, stories, tasks, subtasks and bugs.
-            </p>
+      <AppShell
+        workspaces={shellWorkspaces}
+        activeWorkspaceId={activeWorkspace?.id ?? null}
+        activeSpaceId={activeRepo || intelliOpen || activeNav ? null : activeSpace?.id ?? null}
+        greetingName={firstName}
+        fullscreen={fullscreen}
+        activeNav={activeNav}
+        onSelectNav={(nav) => setActiveNav(nav)}
+        onSelectWorkspace={(id) => {
+          setIntelliOpen(false);
+          setActiveNav(null);
+          setActiveRepoId(null);
+          setActiveWorkspaceId(id);
+          setActiveSpaceId(null);
+        }}
+        onSelectSpace={(id) => {
+          setIntelliOpen(false);
+          setActiveNav(null);
+          setActiveRepoId(null);
+          setActiveSpaceId(id);
+          pushRecent("space", id);
+        }}
+        onCreateWorkspace={() => setWorkspaceDialogOpen(true)}
+        onCreateSpace={() => setSpaceDialogOpen(true)}
+        onCreateItem={() => {
+          setEditingItem(null);
+          setItemTargetStatus("todo");
+          setItemDefaultDue(null);
+          setItemDialogOpen(true);
+        }}
+        onReorderWorkspaces={reorderWorkspaces}
+        onReorderSpaces={reorderSpaces}
+        onReorderRepos={reorderRepos}
+        repositories={repositories}
+        activeRepoId={activeRepoId}
+        onSelectRepo={selectRepo}
+        onConnectRepo={connectRepo}
+        onOpenIntelli={openIntelliWorkspace}
+        intelliActive={intelliOpen}
+        user={user}
+        onSignOut={handleSignOut}
+      >
+        {activeNav === "recent" ? (
+          <RecentsPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
+        ) : activeNav === "starred" ? (
+          <StarredPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
+        ) : activeNav === "teams" ? (
+          <TeamsPanel workspaces={shellWorkspaces} repositories={repositories} currentUser={user.fullName || user.email} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
+        ) : intelliOpen ? (
+          <UnifyIntelliWorkspace
+            preloadedContext={intelliContext}
+            onReviewChanges={handleReviewIntelliChanges}
+          />
+        ) : activeRepo ? (
+          <RepoWorkspace
+            repo={activeRepo}
+            onCreateWorkItem={createWorkItemFromRepo}
+            onOpenIntelliWorkspace={openIntelliWorkspace}
+          />
+        ) : !activeSpace ? (
+          <div className="flex h-full items-center justify-center p-6 text-center">
+            <div>
+              <p className="text-sm font-medium text-foreground">Select or create a space to get started.</p>
+              <p className="mt-1 text-[12px] text-muted">
+                Spaces hold boards for epics, stories, tasks, subtasks and bugs.
+              </p>
+            </div>
           </div>
-        </div>
-      ) : (
-        <SpaceTopbar
-          key={activeSpace.id}
-          spaceName={activeSpace.name}
-          workspaceName={activeWorkspace?.name}
-          boardType={activeSpace.kind}
-          columns={activeSpace.columns ?? DEFAULT_COLUMNS}
-          items={activeSpace.workItems}
-          sprints={activeSpace.sprints ?? []}
-          pinned={!!activeSpace.pinned}
-          currentUser={user}
-          connectedRepo={activeSpaceRepo}
-          fullscreen={fullscreen}
-          onToggleFullscreen={() => setFullscreen((f) => !f)}
-          onMove={moveWorkItem}
-          onCreate={(status) => {
-            setEditingItem(null);
-            setItemTargetStatus(status);
-            setItemDefaultDue(null);
-            setItemDialogOpen(true);
-          }}
-          onCreateWithDate={(dateISO) => {
-            setEditingItem(null);
-            setItemTargetStatus("todo");
-            setItemDefaultDue(dateISO);
-            setItemDialogOpen(true);
-          }}
-          onEditItem={(_item, payload) => upsertWorkItem(payload)}
-          onDeleteItem={deleteWorkItem}
-          onAddColumn={addColumn}
-          onConnectRepo={connectRepoToSpace}
-          onViewRepo={(id) => selectRepo(id)}
-          onPinSpace={() => togglePinSpace(activeSpace.id)}
-          onDeleteSpace={() => deleteSpace(activeSpace.id)}
-          onCreateBacklog={(target) => {
-            setEditingItem(null);
-            setItemTargetStatus(target);
-            setItemDefaultDue(null);
-            setItemDialogOpen(true);
-          }}
-          onCreateSprint={createSprint}
-          onEditSprint={editSprint}
-          onDeleteSprint={deleteSprint}
-          onStartSprint={(id) => editSprint(id, { status: "active" })}
-          onCompleteSprint={(id) => editSprint(id, { status: "completed" })}
-          initialAiChanges={intelliChanges}
-        />
-      )}
+        ) : (
+          <SpaceTopbar
+            key={activeSpace.id}
+            spaceId={activeSpace.id}
+            spaceName={activeSpace.name}
+            workspaceName={activeWorkspace?.name}
+            boardType={activeSpace.kind}
+            columns={activeSpace.columns ?? DEFAULT_COLUMNS}
+            items={activeSpace.workItems}
+            sprints={activeSpace.sprints ?? []}
+            pinned={!!activeSpace.pinned}
+            currentUser={user}
+            connectedRepo={activeSpaceRepo}
+            fullscreen={fullscreen}
+            onToggleFullscreen={() => setFullscreen((f) => !f)}
+            onMove={moveWorkItem}
+            onCreate={(status) => {
+              setEditingItem(null);
+              setItemTargetStatus(status);
+              setItemDefaultDue(null);
+              setItemDialogOpen(true);
+            }}
+            onCreateWithDate={(dateISO) => {
+              setEditingItem(null);
+              setItemTargetStatus("todo");
+              setItemDefaultDue(dateISO);
+              setItemDialogOpen(true);
+            }}
+            onEditItem={(_item, payload) => upsertWorkItem(payload)}
+            onDeleteItem={deleteWorkItem}
+            onAddColumn={addColumn}
+            onConnectRepo={connectRepoToSpace}
+            onViewRepo={(id) => selectRepo(id)}
+            onPinSpace={() => togglePinSpace(activeSpace.id)}
+            onDeleteSpace={() => deleteSpace(activeSpace.id)}
+            onCreateBacklog={(target) => {
+              setEditingItem(null);
+              setItemTargetStatus(target);
+              setItemDefaultDue(null);
+              setItemDialogOpen(true);
+            }}
+            onCreateSprint={createSprint}
+            onEditSprint={editSprint}
+            onDeleteSprint={deleteSprint}
+            onStartSprint={(id) => editSprint(id, { status: "active" })}
+            onCompleteSprint={(id) => editSprint(id, { status: "completed" })}
+            initialAiChanges={intelliChanges}
+          />
+        )}
 
-      <CreateWorkspaceDialog
-        open={workspaceDialogOpen}
-        onOpenChange={setWorkspaceDialogOpen}
-        onCreate={createWorkspace}
-      />
-      <CreateSpaceDialog open={spaceDialogOpen} onOpenChange={setSpaceDialogOpen} onCreate={createSpace} />
-      <WorkItemDialog
-        open={itemDialogOpen}
-        onOpenChange={(o) => { setItemDialogOpen(o); if (!o) setEditingItem(null); }}
-        onSubmit={upsertWorkItem}
-        onDelete={deleteWorkItem}
-        disabled={!activeSpace}
-        spaceName={activeSpace?.name ?? ""}
-        spaces={activeWorkspace?.spaces.map(s => ({ id: s.id, name: s.name })) ?? []}
-        epics={activeSpace?.workItems.filter((w) => w.type === "epic") ?? []}
-        editing={editingItem}
-        defaultDueDate={itemDefaultDue}
-      />
-    </AppShell>
+        <CreateWorkspaceDialog
+          open={workspaceDialogOpen}
+          onOpenChange={setWorkspaceDialogOpen}
+          onCreate={createWorkspace}
+        />
+        <CreateSpaceDialog open={spaceDialogOpen} onOpenChange={setSpaceDialogOpen} onCreate={createSpace} />
+        <WorkItemDialog
+          open={itemDialogOpen}
+          onOpenChange={(o) => { setItemDialogOpen(o); if (!o) setEditingItem(null); }}
+          onSubmit={upsertWorkItem}
+          onDelete={deleteWorkItem}
+          disabled={!activeSpace}
+          spaceName={activeSpace?.name ?? ""}
+          spaces={activeWorkspace?.spaces.map(s => ({ id: s.id, name: s.name })) ?? []}
+          epics={activeSpace?.workItems.filter((w) => w.type === "epic") ?? []}
+          editing={editingItem}
+          defaultDueDate={itemDefaultDue}
+        />
+      </AppShell>
     </IncidentProvider>
   );
 }

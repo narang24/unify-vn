@@ -37,6 +37,11 @@ export interface ApiSpace {
   orderIndex: number;
 }
 
+export interface ApiSpaceMember {
+  id: string; spaceId: string; userId: string | null; email: string;
+  role: "viewer" | "editor" | "admin"; status: "active" | "pending";
+}
+
 export interface ApiWorkItem {
   id: string;
   spaceId: string;
@@ -97,6 +102,33 @@ export interface ApiIncident {
   prNumber: number | null;
   seen: boolean;
 }
+// ─── Sprints ─────────────────────────────────────────────────────────────────
+export interface ApiSprint {
+  id: string;
+  spaceId: string;
+  name: string;
+  status: "planned" | "active" | "completed";
+  startDate: string | null;
+  endDate: string | null;
+}
+
+export const listSprints = (spaceId: string) =>
+  req<{ sprints: ApiSprint[] }>(`/spaces/${spaceId}/sprints`).then((r) => r.sprints);
+
+export const createSprint = (spaceId: string, body: { name: string; startDate?: string; endDate?: string }) =>
+  req<{ sprint: ApiSprint }>(`/spaces/${spaceId}/sprints`, { method: "POST", body: JSON.stringify(body) }).then((r) => r.sprint);
+
+export const updateSprint = (id: string, patch: Partial<Pick<ApiSprint, "name" | "startDate" | "endDate">>) =>
+  req<{ sprint: ApiSprint }>(`/sprints/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).then((r) => r.sprint);
+
+export const deleteSprint = (id: string) =>
+  req<{ message: string }>(`/sprints/${id}`, { method: "DELETE" });
+
+export const startSprint = (id: string) =>
+  req<{ sprint: ApiSprint }>(`/sprints/${id}/start`, { method: "POST" }).then((r) => r.sprint);
+
+export const completeSprint = (id: string) =>
+  req<{ sprint: ApiSprint }>(`/sprints/${id}/complete`, { method: "POST" }).then((r) => r.sprint);
 
 // ─── Workspaces ──────────────────────────────────────────────────────────────
 export const listWorkspaces = () => req<{ workspaces: ApiWorkspace[] }>("/workspaces").then((r) => r.workspaces);
@@ -153,6 +185,15 @@ export const markIncidentSeen = (incidentId: string) =>
   req<{ incident: ApiIncident }>(`/incidents/${incidentId}`, { method: "PATCH", body: JSON.stringify({ seen: true }) });
 export const draftPullRequest = (incidentId: string, rca: Record<string, unknown>) =>
   req<{ title: string; branch: string; body: string }>(`/incidents/${incidentId}/pull_request/draft`, { method: "POST", body: JSON.stringify({ rca }) });
+
+export const listSpaceMembers = (spaceId: string) =>
+  req<{ members: ApiSpaceMember[] }>(`/spaces/${spaceId}/members`).then((r) => r.members);
+export const inviteSpaceMember = (spaceId: string, email: string, role: string) =>
+  req<{ member: ApiSpaceMember }>(`/spaces/${spaceId}/members`, { method: "POST", body: JSON.stringify({ email, role }) }).then((r) => r.member);
+export const updateSpaceMemberRole = (memberId: string, role: string) =>
+  req<{ member: ApiSpaceMember }>(`/space-members/${memberId}`, { method: "PATCH", body: JSON.stringify({ role }) }).then((r) => r.member);
+export const removeSpaceMember = (memberId: string) =>
+  req<{ message: string }>(`/space-members/${memberId}`, { method: "DELETE" });
 
 // ─── GitHub (real data via stored OAuth token) ───────────────────────────────
 export interface GhRepo {

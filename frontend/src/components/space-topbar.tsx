@@ -50,16 +50,17 @@ import type { ConnectedRepository } from "@/lib/repo-types";
 export type SpaceView = "summary" | "list" | "board" | "timeline" | "calendar" | "backlog" | "reports";
 
 const TABS: { id: SpaceView; label: string; icon: typeof Kanban }[] = [
-  { id: "summary",  label: "Summary",  icon: BarChart2 },
-  { id: "list",     label: "List",     icon: List },
-  { id: "board",    label: "Board",    icon: Kanban },
+  { id: "summary", label: "Summary", icon: BarChart2 },
+  { id: "list", label: "List", icon: List },
+  { id: "board", label: "Board", icon: Kanban },
   { id: "timeline", label: "Timeline", icon: GanttChartSquare },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
-  { id: "backlog",  label: "Backlog",  icon: BookOpen },
-  { id: "reports",  label: "Reports",  icon: BarChart3 },
+  { id: "backlog", label: "Backlog", icon: BookOpen },
+  { id: "reports", label: "Reports", icon: BarChart3 },
 ];
 
 interface SpaceTopbarProps {
+  spaceId: string;
   spaceName: string;
   workspaceName?: string;
   boardType: BoardKind;
@@ -91,6 +92,7 @@ interface SpaceTopbarProps {
 }
 
 export function SpaceTopbar({
+  spaceId,
   spaceName,
   workspaceName,
   boardType,
@@ -310,9 +312,9 @@ export function SpaceTopbar({
           >
             {activeView === "summary" && <SummaryView items={items} spaceName={spaceName} />}
             {activeView === "list" && (
-              <ListView 
-                items={items} 
-                onStatusChange={onMove} 
+              <ListView
+                items={items}
+                onStatusChange={onMove}
                 isScrum={isScrum}
                 sprints={sprints}
                 onCreateSprint={onCreateSprint}
@@ -384,7 +386,7 @@ export function SpaceTopbar({
       />
 
       {/* ── Other Dialogs ────────────────────────────────────────────────── */}
-      <AddMembersDialog open={membersOpen} onClose={() => setMembersOpen(false)} spaceName={spaceName} />
+      <AddMembersDialog open={membersOpen} onClose={() => setMembersOpen(false)} spaceName={spaceName} spaceId={spaceId} />
       <ConnectRepoDialog
         open={repoOpen}
         onClose={() => setRepoOpen(false)}
