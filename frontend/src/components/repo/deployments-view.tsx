@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useIncidents } from "@/lib/incident-context";
 import { isFailure, type Deployment, type DeploymentStatus, type RootCauseAnalysis } from "@/lib/incident-agent";
-import type { ConnectedRepository } from "@/lib/repo-types";
+import type { ConnectedRepository, ContextChip } from "@/lib/repo-types";
 import { InvestigatePanel } from "@/components/repo/investigate-panel";
 import { PrDraftModal } from "@/components/repo/pr-draft-modal";
 import type { PrDraft } from "@/lib/incident-agent";

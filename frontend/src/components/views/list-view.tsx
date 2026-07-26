@@ -322,7 +322,7 @@ export function ListView({
                       )}
                       
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger>
                           <Button variant="ghost" size="icon" className="h-7 w-7">
                             <MoreHorizontal className="h-4 w-4 text-muted" />
                           </Button>

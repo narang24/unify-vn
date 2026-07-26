@@ -1,0 +1,12 @@
+.venv
+__pycache__
+*.pyc
+.git
+.env
+!.env.example
+repos
+rag/chroma_db
+*.md
+.vscode
+.DS_Store
+ml/data/test_incidents.csv

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: unify
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: auth
+
+  template:
+    metadata:
+      labels:
+        app: auth
+
+    spec:
+      containers:
+        - name: auth
+
+          image: <YOUR_ECR_URI>:latest
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8001
+
+          env:
+            - name: SERVICE
+              value: auth
+
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secret

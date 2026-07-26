@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { Raleway } from "next/font/google";
+import { Raleway, Geist } from "next/font/google";
 import { appEnv } from "@/config/env";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { PrefsProvider } from "@/lib/prefs-context";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const raleway = Raleway({
   variable: "--font-raleway",
@@ -36,7 +39,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${raleway.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", raleway.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider>

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workspace
+  namespace: unify
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: workspace
+
+  template:
+    metadata:
+      labels:
+        app: workspace
+
+    spec:
+      containers:
+        - name: workspace
+
+          image: <YOUR_ECR_URI>:latest
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8002
+
+          env:
+            - name: SERVICE
+              value: workspace
+
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secret

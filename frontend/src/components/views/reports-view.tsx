@@ -61,7 +61,7 @@ function PieChartSVG({ data }: { data: { label: string; value: number; color: st
   const cx = 80;
   const cy = 80;
   let cumAngle = -Math.PI / 2;
-  const slices: JSX.Element[] = [];
+  const slices: React.ReactElement[] = [];
 
   data.forEach((d, i) => {
     if (d.value === 0) return;

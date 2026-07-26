@@ -186,7 +186,7 @@ function RepoRow({
                         </span>
                     )}
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger>
                             <button
                                 onClick={(e) => e.stopPropagation()}
                                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-transparent opacity-0 transition-opacity hover:bg-foreground/8 group-hover/tab:opacity-100"
