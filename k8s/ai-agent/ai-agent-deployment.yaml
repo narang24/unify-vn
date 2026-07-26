@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-agent
+  namespace: unify
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: ai-agent
+
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+
+    spec:
+      containers:
+        - name: ai-agent
+          image: <ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/unify-ai-agent:latest
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8088
+
+          envFrom:
+            - secretRef:
+                name: ai-agent-secret
