@@ -75,6 +75,7 @@ interface SpaceTopbarProps {
   onMove: (itemId: string, toStatus: string) => void;
   onCreate: (status: string) => void;
   onCreateWithDate?: (dateISO: string) => void;
+  onUpdateItemDates?: (itemId: string, patch: { startDate?: string | null; dueDate?: string | null }) => void;
   onEditItem?: (item: SpaceWorkItem, payload: WorkItemPayload) => void;
   onDeleteItem?: (id: string) => void;
   onAddColumn?: (label: string) => void;
@@ -120,6 +121,7 @@ export function SpaceTopbar({
   onDeleteSprint,
   onStartSprint,
   onCompleteSprint,
+  onUpdateItemDates,
   initialAiChanges,
 }: SpaceTopbarProps) {
   const isScrum = boardType === "scrum";
@@ -334,7 +336,7 @@ export function SpaceTopbar({
                 onAddColumn={onAddColumn}
               />
             )}
-            {activeView === "timeline" && <TimelineView items={items} />}
+            {activeView === "timeline" && <TimelineView items={items} onUpdateItemDates={onUpdateItemDates} />}
             {activeView === "calendar" && <CalendarView items={items} onCreateWithDate={onCreateWithDate} />}
             {activeView === "backlog" && (
               <BacklogView

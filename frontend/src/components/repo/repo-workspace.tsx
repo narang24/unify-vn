@@ -75,21 +75,18 @@ export function RepoWorkspace({
             <div className="relative flex min-w-0 flex-1 flex-col">
                 {/* Repo header */}
                 <div className="flex items-center gap-2 border-b border-border-subtle bg-panel px-3 pt-3 pb-2 sm:px-5">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-[11px] font-bold text-white">
-                        {repo.name[0]?.toUpperCase()}
-                    </div>
-                    <h1 className="truncate text-[15px] font-semibold text-foreground">{repo.name}</h1>
+                    <h1 className="truncate text-[16px] font-bold text-foreground">{repo.name}</h1>
 
                     {/* Owner avatar + owner/repo */}
-                    <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
-                        <span className="text-[12px] text-muted">·</span>
+                    <div className="hidden min-w-0 items-center gap-2 sm:flex">
+                        <span className="text-[14px] font-bold text-muted/60 px-0.5">|</span>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                            src={`https://github.com/${owner}.png`}
+                            src={`https://github.com/${owner}.png?size=48`}
                             alt={owner}
-                            className="h-4 w-4 shrink-0 rounded-full ring-1 ring-black/5"
+                            className="h-6 w-6 shrink-0 rounded-full ring-1 ring-border-subtle/50"
                         />
-                        <span className="truncate text-[12px] text-muted">{repo.fullName}</span>
+                        <span className="truncate text-[13px] font-semibold text-muted">{repo.fullName}</span>
                     </div>
 
                     <AnimatePresence>
@@ -184,10 +181,16 @@ export function RepoWorkspace({
                             {activeTab === "prs" && (
                                 <PullRequestsView repo={repo} selectMode={selectMode} selectedChips={contextChips} onAddChip={addChip} onRemoveChip={removeChip} />
                             )}
-                            {activeTab === "commits" && <CommitsView repo={repo} />}
+                            {activeTab === "commits" && (
+                                <CommitsView repo={repo} selectMode={selectMode} selectedChips={contextChips} onAddChip={addChip} onRemoveChip={removeChip} />
+                            )}
                             {activeTab === "deployments" && (
                                 <DeploymentsView
                                     repo={repo}
+                                    selectMode={selectMode}
+                                    selectedChips={contextChips}
+                                    onAddChip={addChip}
+                                    onRemoveChip={removeChip}
                                     onAskIntelli={(rca) => {
                                         if (rca) {
                                             addChip({

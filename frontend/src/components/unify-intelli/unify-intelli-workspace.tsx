@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Paperclip, SendHorizontal, Sparkles, Copy, Share, Edit2 } from "lucide-react";
+import { Paperclip, SendHorizontal, Sparkles, Copy, Share, Edit2, Filter, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { IntelliSidebar, type IntelliPanel } from "@/components/unify-intelli/intelli-sidebar";
 import { SEED_CHATS, newChat, type IntelliChat, type IntelliChatMessage } from "@/lib/intelli-types";
@@ -135,9 +136,54 @@ export function UnifyIntelliWorkspace({
       />
 
       <div className="dotted-glow relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <DynamicOrbs />
+        {panel !== "chats" && <DynamicOrbs />}
         <AnimatePresence mode="wait">
-          {!activeChat ? (
+          {panel === "chats" ? (
+            <motion.div
+              key="chat-list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mx-auto flex h-full w-full max-w-3xl flex-col px-4 pt-4 pb-8"
+            >
+              <div className="mb-6 flex items-center justify-between">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Chats</h1>
+                <button className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-panel px-3 py-1.5 text-[12.5px] font-semibold text-muted hover:border-accent/50 hover:text-foreground">
+                  <Filter className="h-4 w-4" /> Filter
+                </button>
+              </div>
+              <div className="relative mb-4">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search Chats"
+                  className="h-8 pl-8 text-[12px] font-medium"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto scroll-thin">
+                <div className="flex flex-col gap-1.5">
+                  {chats.filter((c) => c.title.toLowerCase().includes(search.toLowerCase())).map((chat) => (
+                    <button
+                      key={chat.id}
+                      onClick={() => { setActiveChatId(chat.id); setPanel("home"); }}
+                      className="flex flex-col items-start gap-0.5 rounded-lg border border-border-subtle bg-panel px-3 py-2 text-left transition-colors hover:border-accent/50 hover:bg-foreground/[0.04]"
+                    >
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className="truncate text-[13px] font-semibold text-foreground">{chat.title}</span>
+                        <span className="shrink-0 text-[10.5px] font-medium text-muted/80">{chat.updatedAt}</span>
+                      </div>
+                      {chat.preview && <span className="w-full truncate text-[11.5px] text-muted">{chat.preview}</span>}
+                    </button>
+                  ))}
+                </div>
+                {chats.filter((c) => c.title.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+                  <div className="mt-12 text-center text-[13px] text-muted">No chats match your search.</div>
+                )}
+              </div>
+            </motion.div>
+          ) : !activeChat ? (
             <motion.div
               key="hero"
               initial={{ opacity: 0 }}

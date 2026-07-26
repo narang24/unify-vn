@@ -61,23 +61,26 @@ export function HoverBorderGradient({
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
       className={cn(
-        "group relative flex h-min w-full flex-col flex-nowrap justify-between overflow-hidden rounded-lg p-[2.5px] transition duration-300 hover:scale-[1.02] bg-[#2f9aa6]/20",
+        "group relative flex h-min w-full flex-col flex-nowrap justify-between overflow-hidden rounded-lg p-[1.5px] transition-all duration-300 hover:scale-[1.03] bg-[#2f9aa6]/30 group-hover:bg-transparent group-hover:p-0",
+        active && "scale-[1.03] bg-transparent p-0",
         containerClassName
       )}
       {...props}
     >
       <div
         className={cn(
-          "relative z-10 flex w-full items-center rounded-[6px] bg-panel px-2.5 py-2 text-[13px] font-semibold text-[#2f9aa6] transition duration-500",
-          "group-hover:bg-[#2f9aa6] group-hover:text-white dark:group-hover:bg-panel dark:group-hover:text-[#2f9aa6]",
+          "relative z-10 flex w-full items-center rounded-[6px] bg-panel px-2.5 py-2 text-[13px] font-semibold text-[#2f9aa6] transition-colors duration-300 group-hover:text-white overflow-hidden",
+          active && "text-white",
           className
         )}
       >
+        <div className={cn("absolute inset-y-0 left-0 w-0 bg-[#16606a]/90 transition-all duration-300 ease-out group-hover:w-full -z-10", active && "w-full")} />
         {children}
       </div>
       <motion.div
         className={cn(
-          "absolute inset-0 z-0 flex-none overflow-hidden rounded-[inherit] transition-opacity duration-300 group-hover:opacity-0"
+          "absolute inset-0 z-0 flex-none overflow-hidden rounded-[inherit] transition-opacity duration-300 group-hover:opacity-0",
+          active && "opacity-0"
         )}
         style={{
           filter: "blur(2px)",

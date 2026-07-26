@@ -55,11 +55,18 @@ function SpaceRow({ ws, space, onClick }: { ws: ShellWorkspace; space: ShellWork
 }
 
 function RepoRow({ repo, onClick }: { repo: ConnectedRepository; onClick: () => void }) {
+  const owner = repo.owner || repo.fullName.split("/")[0];
+  const avatarUrl = repo.provider === "github" 
+      ? `https://github.com/${owner}.png?size=56` 
+      : `https://avatar.vercel.sh/${owner}`;
+
   return (
     <button onClick={onClick} className="flex w-full items-center gap-2.5 rounded-lg border border-border-subtle bg-panel px-3 py-2.5 text-left hover:bg-foreground/[0.04]">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: `${repo.avatarColor}22` }}>
-        <GitBranch className="h-3.5 w-3.5" style={{ color: repo.avatarColor }} />
-      </span>
+      <img
+          src={avatarUrl}
+          alt={owner}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full object-cover ring-1 ring-border-subtle/50"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-foreground">{repo.name}</p>
         <p className="truncate text-[11.5px] text-muted">{repo.fullName}</p>

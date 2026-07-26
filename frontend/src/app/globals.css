@@ -832,3 +832,58 @@ a {
   padding: 0;
   color: inherit;
 }
+
+/* ─── Timeline drag tooltips (Jira-style) ─────────────────────────────────── */
+
+.timeline-tooltip {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: var(--font-sans), sans-serif;
+  padding: 4px 9px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+}
+
+/* Arrow using ::after */
+.timeline-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+}
+
+/* Left tooltip: sits to the left of the bar, arrow points right */
+.timeline-tooltip--left {
+  right: calc(100% + 10px);
+}
+.timeline-tooltip--left::after {
+  left: 100%;
+  border-left-color: #1a1a1a;
+  border-right: none;
+}
+
+/* Right tooltip: sits to the right of the bar, arrow points left */
+.timeline-tooltip--right {
+  left: calc(100% + 10px);
+}
+.timeline-tooltip--right::after {
+  right: 100%;
+  border-right-color: #1a1a1a;
+  border-left: none;
+}
+
+.timeline-tooltip__days {
+  opacity: 0.7;
+  font-weight: 500;
+}

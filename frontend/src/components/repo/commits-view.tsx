@@ -4,15 +4,28 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { GitBranch, GitCommit, Shield, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ConnectedRepository } from "@/lib/repo-types";
+import type { ConnectedRepository, ContextChip } from "@/lib/repo-types";
 import { getRepoBranches, getRepoCommits, type GhBranch, type GhCommit } from "@/lib/api";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function fmtDate(s: string) {
   const d = new Date(s);
   return isNaN(d.getTime()) ? s : d.toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function CommitsView({ repo }: { repo?: ConnectedRepository }) {
+export function CommitsView({
+  repo,
+  selectMode,
+  selectedChips = [],
+  onAddChip,
+  onRemoveChip,
+}: {
+  repo?: ConnectedRepository;
+  selectMode?: boolean;
+  selectedChips?: ContextChip[];
+  onAddChip?: (c: ContextChip) => void;
+  onRemoveChip?: (id: string) => void;
+}) {
   const [branches, setBranches] = React.useState<GhBranch[]>([]);
   const [activeBranch, setActiveBranch] = React.useState<string>(repo?.defaultBranch ?? "main");
   const [commits, setCommits] = React.useState<GhCommit[]>([]);
@@ -85,22 +98,45 @@ export function CommitsView({ repo }: { repo?: ConnectedRepository }) {
           )}
         </p>
         <div className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-panel">
-          {commits.map((c, i) => (
-            <motion.div
-              key={c.sha}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.02, 0.2) }}
-              className="flex items-center gap-3 px-3.5 py-2.5"
-            >
-              <GitCommit className="h-4 w-4 shrink-0 text-muted" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-foreground">{c.message}</p>
-                <p className="text-[11.5px] text-muted">{c.author} · {fmtDate(c.date)}</p>
-              </div>
-              <code className="shrink-0 rounded bg-foreground/6 px-1.5 py-0.5 font-mono text-[10.5px] text-muted">{c.shortSha}</code>
-            </motion.div>
-          ))}
+          {commits.map((c, i) => {
+            const chipId = `ctx_commit_${c.sha}`;
+            const isSelected = selectedChips.some((x) => x.id === chipId);
+
+            return (
+              <motion.div
+                key={c.sha}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.02, 0.2) }}
+                className={cn("flex items-center gap-3 px-3.5 py-2.5", selectMode && isSelected && "bg-accent/5")}
+              >
+                {selectMode && (
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onAddChip?.({
+                          id: chipId,
+                          type: "code",
+                          label: `Commit: ${c.shortSha}`,
+                          meta: `${c.message}\nBy ${c.author} on ${fmtDate(c.date)}`,
+                        });
+                      } else {
+                        onRemoveChip?.(chipId);
+                      }
+                    }}
+                    className="mr-1"
+                  />
+                )}
+                <GitCommit className="h-4 w-4 shrink-0 text-muted" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-foreground">{c.message}</p>
+                  <p className="text-[11.5px] text-muted">{c.author} · {fmtDate(c.date)}</p>
+                </div>
+                <code className="shrink-0 rounded bg-foreground/6 px-1.5 py-0.5 font-mono text-[10.5px] text-muted">{c.shortSha}</code>
+              </motion.div>
+            );
+          })}
           {!loading && commits.length === 0 && (
             <p className="px-3.5 py-6 text-center text-[12.5px] text-muted">No commits found.</p>
           )}

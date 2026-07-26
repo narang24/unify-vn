@@ -12,8 +12,13 @@ import {
   Search,
   Database,
   Clock,
+  Bot,
+  ChevronRight,
+  RefreshCw,
 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useIncidents } from "@/lib/incident-context";
 import { isFailure, type Deployment, type DeploymentStatus, type RootCauseAnalysis } from "@/lib/incident-agent";
 import type { ConnectedRepository } from "@/lib/repo-types";
@@ -33,9 +38,17 @@ const STATUS: Record<DeploymentStatus, { label: string; icon: typeof CheckCircle
 
 export function DeploymentsView({
   repo,
+  selectMode,
+  selectedChips = [],
+  onAddChip,
+  onRemoveChip,
   onAskIntelli,
 }: {
   repo: ConnectedRepository;
+  selectMode?: boolean;
+  selectedChips?: ContextChip[];
+  onAddChip?: (c: ContextChip) => void;
+  onRemoveChip?: (id: string) => void;
   onAskIntelli: (rca?: RootCauseAnalysis) => void;
 }) {
   const incidents = useIncidents();
@@ -84,18 +97,38 @@ export function DeploymentsView({
 
   return (
     <div className="h-full overflow-y-auto scroll-thin p-4 font-semibold">
-      {/* Repository-memory status bar */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <IndexBadge state={state?.index ?? "idle"} />
-        <p className="text-[12px] text-muted">
-          Unify Intelli continuously indexes this repo and analyzes failed deployments automatically.
+      {/* Repository-memory status bar / Explanation Box */}
+      <div className="mb-5 rounded-lg border border-border-subtle bg-panel-strong/20 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Image
+              src="/unify-intelli-icon.png"
+              alt="Unify Intelli"
+              width={32}
+              height={32}
+              className="rounded-md"
+            />
+            <h3 className="text-[14px] font-semibold text-foreground">Unify Intelli Deployment Analysis</h3>
+          </div>
+          <button
+            onClick={() => incidents.triggerDeployment(repo.id)}
+            className="flex items-center gap-1.5 rounded-lg border border-border-subtle px-2.5 py-1.5 text-[12px] font-semibold text-foreground hover:bg-foreground/[0.06]"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Sync
+          </button>
+        </div>
+        <p className="mb-4 text-[12.5px] font-medium text-muted">
+          Our AI agent automatically monitors your deployments, analyzes crashes, and suggests fixes by referencing your repository's code context.
         </p>
-        <button
-          onClick={() => incidents.triggerDeployment(repo.id)}
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-border-subtle px-2.5 py-1.5 text-[12px] font-semibold text-foreground hover:bg-foreground/[0.06]"
-        >
-          <Rocket className="h-3.5 w-3.5" /> Sync deployments
-        </button>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-accent/80">
+          <span className="rounded-md bg-accent/10 px-2 py-1">Detect Failure</span>
+          <ChevronRight className="h-3 w-3 text-accent/50" />
+          <span className="rounded-md bg-accent/10 px-2 py-1">Index Repository</span>
+          <ChevronRight className="h-3 w-3 text-accent/50" />
+          <span className="rounded-md bg-accent/10 px-2 py-1">Analyze Logs & Code</span>
+          <ChevronRight className="h-3 w-3 text-accent/50" />
+          <span className="rounded-md bg-accent/20 px-2 py-1 text-accent">Suggest Fix & Generate PR</span>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -103,14 +136,31 @@ export function DeploymentsView({
           const analysis  = state?.analyses[dep.id];
           const analyzing = state?.analyzing.includes(dep.id);
           const failed    = isFailure(dep.status);
+          const chipId    = `ctx_deploy_${dep.id}`;
+          const isSelected = selectedChips.some((x) => x.id === chipId);
+
           return (
-            <div key={dep.id} className="overflow-hidden rounded-xl border border-border-subtle bg-panel">
+            <div key={dep.id} className={cn("overflow-hidden rounded-xl border border-border-subtle bg-panel", selectMode && isSelected && "bg-accent/5 border-accent/20")}>
               <DeploymentRow
                 dep={dep}
                 failed={failed}
                 analyzing={!!analyzing}
                 hasAnalysis={!!analysis}
                 onInvestigate={() => setPanelDepId(dep.id)}
+                selectMode={selectMode}
+                isSelected={isSelected}
+                onSelectToggle={(checked) => {
+                  if (checked) {
+                    onAddChip?.({
+                      id: chipId,
+                      type: "code",
+                      label: `Deploy: ${dep.version}`,
+                      meta: `${dep.commitMessage}\nEnvironment: ${dep.environment}\nStatus: ${dep.status}`,
+                    });
+                  } else {
+                    onRemoveChip?.(chipId);
+                  }
+                }}
               />
             </div>
           );
@@ -178,12 +228,18 @@ function DeploymentRow({
   analyzing,
   hasAnalysis,
   onInvestigate,
+  selectMode,
+  isSelected,
+  onSelectToggle,
 }: {
   dep: Deployment;
   failed: boolean;
   analyzing: boolean;
   hasAnalysis: boolean;
   onInvestigate: () => void;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onSelectToggle?: (selected: boolean) => void;
 }) {
   const s = STATUS[dep.status];
   const Icon = s.icon;
@@ -191,6 +247,13 @@ function DeploymentRow({
 
   return (
     <div className="flex w-full items-center gap-3 px-3.5 py-3">
+      {selectMode && (
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={onSelectToggle}
+          className="mr-1"
+        />
+      )}
       <Icon className={cn("h-4 w-4 shrink-0", s.className, spinning && "animate-spin")} />
 
       <div className="min-w-0 flex-1">
@@ -199,16 +262,10 @@ function DeploymentRow({
           <span className="shrink-0 rounded bg-foreground/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-muted">
             {dep.environment}
           </span>
-          {failed && (
-            analyzing ? (
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent/12 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
-                <Loader2 className="h-2.5 w-2.5 animate-spin" /> Analyzing
-              </span>
-            ) : hasAnalysis ? (
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent/12 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
-                <Sparkles className="h-2.5 w-2.5" /> Suggestion ready
-              </span>
-            ) : null
+          {failed && analyzing && (
+            <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent/12 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" /> Analyzing
+            </span>
           )}
         </div>
         <p className="mt-0.5 truncate text-[11.5px] text-muted">
@@ -216,20 +273,14 @@ function DeploymentRow({
         </p>
       </div>
 
-      {/* Investigate button — only on failed deployments */}
-      {failed && (
+      {/* Investigate button — only shown once AI analysis is ready */}
+      {failed && hasAnalysis && (
         <button
           id={`investigate-btn-${dep.id}`}
           onClick={onInvestigate}
-          className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold transition-colors",
-            hasAnalysis
-              ? "bg-danger/10 text-danger hover:bg-danger/15"
-              : "border border-border-subtle text-muted hover:bg-foreground/[0.06] hover:text-foreground",
-          )}
+          className="flex shrink-0 items-center rounded-lg bg-[#16606a] px-3 py-1.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[#0f4a52]"
           aria-label={`Investigate failed deployment: ${dep.commitMessage}`}
         >
-          <Search className="h-3.5 w-3.5" />
           Investigate
         </button>
       )}

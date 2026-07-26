@@ -110,6 +110,10 @@ sprintsRouter.patch("/sprints/:id", async (req: AuthedRequest, res) => {
     if (startDate) set.startDate = new Date(startDate);
     if (endDate) set.endDate = new Date(endDate);
 
+    if (Object.keys(set).length === 0) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+
     const [updated] = await db
       .update(sprints)
       .set(set)

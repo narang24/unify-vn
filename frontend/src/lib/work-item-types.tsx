@@ -104,6 +104,7 @@ export interface SpaceWorkItem {
   type: WorkItemType;
   status: string;
   assignee?: string | null;
+  startDate: string | null;
   dueDate?: string | null;
   description?: string | null;
   label?: string | null;

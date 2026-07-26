@@ -292,11 +292,11 @@ function SidebarBody({
           containerClassName={cn("w-full max-w-[225px]", collapsed && "w-min justify-center")}
           className={cn("group gap-2.5 px-2.5 py-2", collapsed && "px-0 justify-center")}
         >
-          <Lightbulb className="h-4 w-4 shrink-0 text-[#2f9aa6] group-hover:text-white dark:group-hover:text-[#2f9aa6]" />
+          <Lightbulb className={cn("h-4 w-4 shrink-0 text-[#2f9aa6] group-hover:text-white transition-colors duration-300", intelliActive && "text-white")} />
           {!collapsed && (
             <>
               <span className="flex-1 text-left">Unify Intelli</span>
-              <SquareArrowOutUpRight className="h-4 w-4 shrink-0 text-[#2f9aa6] opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-hover:text-white dark:group-hover:text-[#2f9aa6]" />
+              <SquareArrowOutUpRight className={cn("h-4 w-4 shrink-0 text-[#2f9aa6] opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-hover:text-white", intelliActive && "opacity-100 text-white")} />
             </>
           )}
         </HoverBorderGradient>
@@ -444,7 +444,7 @@ function WorkspaceRow({
   }, [active]);
 
   function handleEnter() {
-    armTimer.current = setTimeout(() => setArmed(true), 1200);
+    armTimer.current = setTimeout(() => setArmed(true), 5000);
   }
   function handleLeave() {
     if (armTimer.current) clearTimeout(armTimer.current);
@@ -458,6 +458,12 @@ function WorkspaceRow({
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
         onPointerUp={onDragEnd}
+        onPointerDown={(e) => {
+          if (armed) {
+            onDragStart();
+            controls.start(e);
+          }
+        }}
         className={cn("group flex items-center gap-1 rounded-lg pr-1", armed && "drag-armed")}
       >
         <DragHandle
@@ -536,12 +542,18 @@ function SpaceRow({
   return (
     <Reorder.Item value={sp} dragListener={false} dragControls={controls} className="list-none">
       <div
-        onMouseEnter={() => (armTimer.current = setTimeout(() => setArmed(true), 1200))}
+        onMouseEnter={() => (armTimer.current = setTimeout(() => setArmed(true), 5000))}
         onMouseLeave={() => {
           if (armTimer.current) clearTimeout(armTimer.current);
           setArmed(false);
         }}
         onPointerUp={onDragEnd}
+        onPointerDown={(e) => {
+          if (armed) {
+            onDragStart();
+            controls.start(e);
+          }
+        }}
         className={cn("group flex items-center gap-1 rounded-md", armed && "drag-armed")}
       >
         <DragHandle

@@ -91,22 +91,22 @@ export function ConnectGithubDialog({
                             <GitBranch className="h-4 w-4 text-foreground" />
                         </div>
                         <div>
-                            <DialogTitle>Connect a GitHub repository</DialogTitle>
-                            <DialogDescription>Pick one of your repositories — no token or webhook setup needed.</DialogDescription>
+                            <DialogTitle className="font-semibold">Connect a GitHub repository</DialogTitle>
+                            <DialogDescription className="font-semibold">Pick one of your repositories — no token or webhook setup needed.</DialogDescription>
                         </div>
                     </div>
                 </DialogHeader>
 
                 {/* Your repositories (real, via OAuth) */}
                 {loadingRepos ? (
-                    <div className="flex items-center gap-1.5 py-6 text-[12.5px] text-muted">
+                    <div className="flex items-center gap-1.5 py-6 text-[12.5px] font-semibold text-muted">
                         <Loader2 className="h-4 w-4 animate-spin" /> Loading your repositories…
                     </div>
                 ) : repos && repos.length > 0 ? (
                     <div className="space-y-2">
                         <div className="relative">
                             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-                            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your repositories" className="h-9 pl-8 text-[13px]" />
+                            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your repositories" className="h-9 pl-8 text-[13px] font-semibold" />
                         </div>
                         <div className="max-h-64 space-y-0.5 overflow-y-auto scroll-thin rounded-lg border border-border-subtle p-1">
                             {filtered.map((r) => (
@@ -118,18 +118,18 @@ export function ConnectGithubDialog({
                                     <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted" />
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-[13px] font-semibold text-foreground">{r.fullName}</p>
-                                        {r.description && <p className="truncate text-[11.5px] text-muted">{r.description}</p>}
+                                        {r.description && <p className="truncate text-[11.5px] font-semibold text-muted">{r.description}</p>}
                                     </div>
                                     {r.private && <Lock className="h-3 w-3 shrink-0 text-muted" />}
                                     {r.language && <span className="shrink-0 text-[10.5px] text-muted">{r.language}</span>}
                                 </button>
                             ))}
-                            {filtered.length === 0 && <p className="px-2 py-3 text-center text-[12px] text-muted">No repositories match.</p>}
+                            {filtered.length === 0 && <p className="px-2 py-3 text-center text-[12px] font-semibold text-muted">No repositories match.</p>}
                         </div>
                     </div>
                 ) : (
                     notConnected && (
-                        <div className="rounded-lg border border-border-subtle bg-panel-strong/40 p-3 text-[12.5px] text-muted">
+                        <div className="rounded-lg border border-border-subtle bg-panel-strong/40 p-3 text-[12.5px] font-semibold text-muted">
                             Sign in with GitHub to list your repositories automatically, or paste a URL below.
                         </div>
                     )
@@ -137,13 +137,14 @@ export function ConnectGithubDialog({
 
                 {/* URL fallback */}
                 <div className="mt-3 space-y-1.5">
-                    <Label htmlFor="repo-url">…or paste a repository URL</Label>
+                    <Label htmlFor="repo-url" className="font-semibold">…or paste a repository URL</Label>
                     <Input
                         id="repo-url"
                         placeholder="https://github.com/org/repo"
                         value={url}
                         onChange={(e) => { setUrl(e.target.value); setError(""); }}
                         onKeyDown={(e) => e.key === "Enter" && handleConnectUrl()}
+                        className="font-semibold"
                     />
                 </div>
                 {error && (
@@ -153,8 +154,8 @@ export function ConnectGithubDialog({
                 )}
 
                 <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleConnectUrl} disabled={!url.trim() || connecting}>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="font-semibold">Cancel</Button>
+                    <Button onClick={handleConnectUrl} disabled={!url.trim() || connecting} className="font-semibold">
                         {connecting ? "Connecting…" : "Connect from URL"}
                     </Button>
                 </DialogFooter>

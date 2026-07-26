@@ -58,7 +58,7 @@ function seededWorkspace(): Workspace {
         kind: "kanban",
         columns: DEFAULT_COLUMNS.map((c) => ({ ...c })),
         workItems: [
-          { id: uid("wi"), title: "Bug Resolver", type: "bug", status: "inprogress", assignee: "VN", dueDate: "2026-07-23" },
+          { id: uid("wi"), title: "Bug Resolver", type: "bug", status: "inprogress", assignee: "VN", startDate: "2026-07-21", dueDate: "2026-07-23" },
         ],
         sprints: [],
       },
@@ -86,6 +86,7 @@ function mapApiWorkItem(w: ApiWorkItem): WorkItem {
     type: w.type,
     status: w.status,
     assignee: w.assignee,
+    startDate: w.startDate,
     dueDate: w.dueDate,
     description: w.description,
     label: w.label,
@@ -421,7 +422,7 @@ export default function DashboardPage() {
         ),
       );
     } catch {
-      const item: WorkItem = { id: uid("wi"), status: itemTargetStatus, ...payload };
+      const item: WorkItem = { id: uid("wi"), status: itemTargetStatus, startDate: null, ...payload };
       setWorkspaces((all) =>
         all.map((ws) =>
           ws.id !== activeWorkspaceId
@@ -451,7 +452,7 @@ export default function DashboardPage() {
       toast({ title: "Create a space first", description: "Work items need a space to live in.", variant: "error" });
       return;
     }
-    let item: WorkItem = { id: uid("wi"), title, type, status: "todo", attachments };
+    let item: WorkItem = { id: uid("wi"), title, type, status: "todo", startDate: null, attachments };
     try {
       const created = await api.createWorkItem(targetSpaceId, { title, type, status: "todo", attachments });
       item = mapApiWorkItem(created);
@@ -502,6 +503,21 @@ export default function DashboardPage() {
       );
     }
     toast({ title: "Status added", description: label, variant: "success" });
+  }
+
+  function updateItemDates(itemId: string, patch: { startDate?: string | null; dueDate?: string | null }) {
+    setWorkspaces((all) =>
+      all.map((ws) => ({
+        ...ws,
+        spaces: ws.spaces.map((sp) => ({
+          ...sp,
+          workItems: sp.workItems.map((wi) => (wi.id === itemId ? { ...wi, ...patch } : wi)),
+        })),
+      })),
+    );
+    api.updateWorkItem(itemId, patch as Partial<ApiWorkItem>).catch(() => {
+      toast({ title: "Couldn't save dates", variant: "error" });
+    });
   }
 
   // ── Sprints ─────────────────────────────────────────────────────────────
@@ -962,6 +978,7 @@ export default function DashboardPage() {
             fullscreen={fullscreen}
             onToggleFullscreen={() => setFullscreen((f) => !f)}
             onMove={moveWorkItem}
+            onUpdateItemDates={updateItemDates}
             onCreate={(status) => {
               setEditingItem(null);
               setItemTargetStatus(status);

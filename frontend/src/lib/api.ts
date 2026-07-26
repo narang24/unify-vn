@@ -53,6 +53,7 @@ export interface ApiWorkItem {
   assignee: string | null;
   epicId: string | null;
   attachments: WorkItemAttachment[];
+  startDate: string | null;
   dueDate: string | null;
 }
 

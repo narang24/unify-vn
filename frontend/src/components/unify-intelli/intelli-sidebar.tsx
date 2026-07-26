@@ -1,9 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen, Filter, Search } from "lucide-react";
+import { Plus, MessageSquare, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
 import type { IntelliChat } from "@/lib/intelli-types";
 
 export type IntelliPanel = "home" | "chats" | "recents";
@@ -32,7 +31,6 @@ export function IntelliSidebar({
   onSearchChange: (v: string) => void;
 }) {
   const recents = [...chats].slice(0, 6);
-  const filteredChats = chats.filter((c) => c.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <motion.aside
@@ -77,47 +75,13 @@ export function IntelliSidebar({
       </div>
 
       {!collapsed && (
-        <div className="min-h-0 flex-1 overflow-y-auto scroll-thin px-2 pb-2">
-          <AnimatePresence mode="wait">
-            {activePanel === "chats" && (
-              <motion.div key="chats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
-                <div className="flex items-center justify-between px-1 py-2">
-                  <span className="text-[12.5px] font-semibold text-foreground">Recents</span>
-                  <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground">
-                    <Filter className="h-3 w-3" /> Filter
-                  </button>
-                </div>
-                <div className="relative mb-2">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-                  <Input
-                    value={search}
-                    onChange={(e) => onSearchChange(e.target.value)}
-                    placeholder="Search Chats"
-                    className="h-8 pl-8 text-[12px] font-semibold"
-                  />
-                </div>
-                <div className="space-y-0.5">
-                  {filteredChats.map((chat) => (
-                    <ChatRow key={chat.id} chat={chat} active={chat.id === activeChatId} onClick={() => onSelectChat(chat.id)} />
-                  ))}
-                  {filteredChats.length === 0 && (
-                    <p className="px-1.5 py-3 text-center text-[11.5px] font-semibold text-muted">No chats match your search.</p>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {activePanel === "home" && (
-              <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
-                <p className="px-1 py-2 text-[11.5px] font-semibold uppercase tracking-wide text-muted">Recent</p>
-                <div className="space-y-0.5">
-                  {recents.slice(0, 4).map((chat) => (
-                    <ChatRow key={chat.id} chat={chat} active={chat.id === activeChatId} onClick={() => onSelectChat(chat.id)} />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-thin px-2 pb-2 mt-2">
+          <p className="px-1 py-2 text-[11.5px] font-semibold uppercase tracking-wide text-muted">Recent</p>
+          <div className="space-y-0.5">
+            {recents.slice(0, 4).map((chat) => (
+              <ChatRow key={chat.id} chat={chat} active={chat.id === activeChatId} onClick={() => { onSelectChat(chat.id); onSelectPanel("home"); }} />
+            ))}
+          </div>
         </div>
       )}
     </motion.aside>

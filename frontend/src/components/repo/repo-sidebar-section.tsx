@@ -100,17 +100,17 @@ export function RepoSidebarSection({
 }
 
 function RepoGlyph({ repo }: { repo: ConnectedRepository }) {
+    const owner = repo.owner || repo.fullName.split("/")[0];
+    const avatarUrl = repo.provider === "github" 
+        ? `https://github.com/${owner}.png?size=40` 
+        : `https://avatar.vercel.sh/${owner}`;
+
     return (
-        <span
-            className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded"
-            style={{ backgroundColor: `${repo.avatarColor}22` }}
-        >
-            {repo.provider === "github" ? (
-                <GitBranch className="h-3 w-3" style={{ color: repo.avatarColor }} />
-            ) : (
-                <FolderGit2 className="h-3 w-3" style={{ color: repo.avatarColor }} />
-            )}
-        </span>
+        <img
+            src={avatarUrl}
+            alt={owner}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full object-cover ring-1 ring-border-subtle/50"
+        />
     );
 }
 
@@ -138,12 +138,18 @@ function RepoRow({
     return (
         <Reorder.Item value={repo} dragListener={false} dragControls={controls} className="list-none">
             <div
-                onMouseEnter={() => (armTimer.current = setTimeout(() => setArmed(true), 1200))}
+                onMouseEnter={() => (armTimer.current = setTimeout(() => setArmed(true), 5000))}
                 onMouseLeave={() => {
                     if (armTimer.current) clearTimeout(armTimer.current);
                     setArmed(false);
                 }}
                 onPointerUp={onDragEnd}
+                onPointerDown={(e) => {
+                    if (armed) {
+                        onDragStart();
+                        controls.start(e);
+                    }
+                }}
                 className={cn("group/tab group flex items-center gap-1 rounded-lg pr-1", armed && "drag-armed")}
             >
                 <span
@@ -156,41 +162,49 @@ function RepoRow({
                 >
                     <GripVertical className="h-3.5 w-3.5" />
                 </span>
-                <button
+                <div
+                    role="button"
+                    tabIndex={0}
                     onClick={onSelect}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelect();
+                        }
+                    }}
                     className={cn(
-                        "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-semibold hover:bg-foreground/6",
+                        "group/tab flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-[13px] font-semibold hover:bg-foreground/6",
                         active ? "bg-accent/10 text-accent" : "text-foreground",
                     )}
                     title={repo.fullName}
                 >
                     <RepoGlyph repo={repo} />
-                    <span className="truncate">{repo.name}</span>
+                    <span className="truncate flex-1">{repo.name}</span>
                     {hasRecommendation && (
-                        <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-danger/12 px-1.5 py-0.5 text-[9.5px] font-semibold text-danger">
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-danger/12 px-1.5 py-0.5 text-[9.5px] font-semibold text-danger">
                             <span className="h-1.5 w-1.5 rounded-full bg-danger" /> AI
                         </span>
                     )}
-                </button>
-                <DropdownMenu>
-                    <DropdownMenuTrigger>
-                        <button
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-transparent opacity-0 transition-opacity hover:bg-foreground/8 group-hover/tab:opacity-100"
-                        >
-                            <MoreVertical className="h-3.5 w-3.5 text-slate-500" />
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="min-w-35 p-1">
-                        <DropdownMenuItem onClick={() => toggleStar(repo.id)} className="px-2 py-1 text-xs h-auto cursor-pointer">
-                            {starred ? "Unstar Repository" : "Star Repository"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="my-1" />
-                        <DropdownMenuItem className="px-2 py-1 text-xs h-auto cursor-pointer text-red-600 focus:bg-red-500/10 focus:text-red-600">
-                            Delete Repository
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-transparent opacity-0 transition-opacity hover:bg-foreground/8 group-hover/tab:opacity-100"
+                            >
+                                <MoreVertical className="h-3.5 w-3.5 text-slate-500" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="min-w-35 p-1">
+                            <DropdownMenuItem onClick={() => toggleStar(repo.id)} className="px-2 py-1 text-xs h-auto cursor-pointer">
+                                {starred ? "Unstar Repository" : "Star Repository"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="my-1" />
+                            <DropdownMenuItem className="px-2 py-1 text-xs h-auto cursor-pointer text-red-600 focus:bg-red-500/10 focus:text-red-600">
+                                Delete Repository
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
         </Reorder.Item>
     );

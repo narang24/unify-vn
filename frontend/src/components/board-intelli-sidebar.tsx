@@ -128,7 +128,7 @@ export function BoardIntelliSidebar({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
+            className="fixed inset-0 z-40 bg-black/20"
             onClick={onClose}
           />
 
@@ -148,7 +148,7 @@ export function BoardIntelliSidebar({
               </div>
               <div className="flex-1">
                 <p className="text-[13.5px] font-semibold text-foreground">Unify Intelli</p>
-                <p className="text-[10.5px] text-muted">{spaceName} · AI Insights</p>
+                <p className="text-[10.5px] font-semibold text-muted">{spaceName} · AI Insights</p>
               </div>
               <button
                 onClick={onClose}
@@ -169,7 +169,7 @@ export function BoardIntelliSidebar({
                       <Lightbulb className="h-6 w-6 text-accent" />
                     </div>
                     <h3 className="text-[15px] font-semibold text-foreground">Board Insights</h3>
-                    <p className="mt-1 text-[12px] text-muted">
+                    <p className="mt-1 text-[12px] font-semibold text-muted">
                       Ask anything about your board, get AI-generated recommendations, analysis, and answers.
                     </p>
                   </div>
@@ -185,7 +185,7 @@ export function BoardIntelliSidebar({
                           </div>
                           <div>
                             <p className="text-[12.5px] font-semibold text-foreground">{card.title}</p>
-                            <p className="mt-0.5 text-[11.5px] text-muted">{card.body}</p>
+                            <p className="mt-0.5 text-[11.5px] font-semibold text-muted">{card.body}</p>
                           </div>
                         </div>
                       );
@@ -200,7 +200,7 @@ export function BoardIntelliSidebar({
                         <button
                           key={s}
                           onClick={() => send(s)}
-                          className="rounded-full border border-border-subtle bg-panel px-3 py-1.5 text-[11.5px] text-muted transition-colors hover:border-accent/40 hover:text-foreground"
+                          className="rounded-full border border-border-subtle bg-panel px-3 py-1.5 text-[11.5px] font-semibold text-muted transition-colors hover:border-accent/40 hover:text-foreground"
                         >
                           {s}
                         </button>
@@ -215,7 +215,7 @@ export function BoardIntelliSidebar({
                     <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                       <div
                         className={cn(
-                          "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[12.5px] leading-relaxed whitespace-pre-line",
+                          "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold leading-relaxed whitespace-pre-line",
                           m.role === "user"
                             ? "bg-accent text-white"
                             : "border border-border-subtle bg-panel-strong/30 text-foreground"
@@ -242,7 +242,7 @@ export function BoardIntelliSidebar({
                       <button
                         key={s}
                         onClick={() => send(s)}
-                        className="rounded-full border border-border-subtle bg-panel px-2.5 py-1 text-[10.5px] text-muted transition-colors hover:border-accent/40 hover:text-foreground"
+                        className="rounded-full border border-border-subtle bg-panel px-2.5 py-1 text-[10.5px] font-semibold text-muted transition-colors hover:border-accent/40 hover:text-foreground"
                       >
                         {s}
                       </button>
@@ -263,7 +263,7 @@ export function BoardIntelliSidebar({
                       }}
                       rows={1}
                       placeholder="Ask about this board…"
-                      className="max-h-24 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] text-foreground placeholder:text-muted focus:outline-none"
+                      className="max-h-24 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] font-semibold text-foreground placeholder:text-muted focus:outline-none"
                     />
                     <button
                       onClick={() => send()}

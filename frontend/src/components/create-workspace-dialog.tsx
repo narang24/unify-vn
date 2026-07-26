@@ -32,25 +32,26 @@ export function CreateWorkspaceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Create workspace">
         <DialogHeader>
-          <DialogTitle>Create a workspace</DialogTitle>
-          <DialogDescription>Workspaces group related spaces for a team or project.</DialogDescription>
+          <DialogTitle className="font-semibold">Create a workspace</DialogTitle>
+          <DialogDescription className="font-semibold">Workspaces group related spaces for a team or project.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3 font-semibold">
           <div className="space-y-1.5">
-            <Label htmlFor="ws-name">Workspace name</Label>
+            <Label htmlFor="ws-name" className="font-semibold">Workspace name</Label>
             <Input
               id="ws-name"
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Product Engineering"
+              className="font-semibold"
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="font-semibold">
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || submitting}>
+            <Button type="submit" disabled={!name.trim() || submitting} className="font-semibold">
               {submitting ? "Creating…" : "Create workspace"}
             </Button>
           </DialogFooter>

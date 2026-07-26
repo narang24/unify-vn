@@ -97,21 +97,17 @@ export const workItems = pgTable("work_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   spaceId: uuid("space_id").notNull().references(() => spaces.id, { onDelete: "cascade" }),
   sprintId: uuid("sprint_id").references(() => sprints.id, { onDelete: "set null" }),
-  // Subtasks reference their parent epic/story/task/bug via parentId.
   parentId: uuid("parent_id"),
-  // A work item may be attached to an epic (separate from parentId).
   epicId: uuid("epic_id"),
   title: text("title").notNull(),
   description: text("description"),
-  type: text("type")
-    .$type<"epic" | "story" | "task" | "subtask" | "bug">()
-    .notNull()
-    .default("task"),
-  status: text("status").notNull().default("todo"), // matches the space's column ids
+  type: text("type").$type<"epic" | "story" | "task" | "subtask" | "bug">().notNull().default("task"),
+  status: text("status").notNull().default("todo"),
   label: text("label"),
-  assignee: text("assignee"),                 // free-text initials/name from the UI
+  assignee: text("assignee"),
   assigneeId: uuid("assignee_id").references(() => users.id),
   attachments: jsonb("attachments").$type<WorkItemAttachment[]>().notNull().default([]),
+  startDate: timestamp("start_date"),   // ← add this
   dueDate: timestamp("due_date"),
   orderIndex: integer("order_index").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),

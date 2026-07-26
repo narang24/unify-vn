@@ -24,6 +24,7 @@ workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) =
       assignee,
       epicId,
       attachments,
+      startDate,
       dueDate,
       parentId,
       sprintId,
@@ -41,6 +42,7 @@ workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) =
       parentId?: string;
       sprintId?: string;
       orderIndex?: number;
+      startDate?: string;
     };
 
     if (!title?.trim()) return res.status(400).json({ error: "Title is required" });
@@ -67,6 +69,7 @@ workItemsRouter.post("/spaces/:id/work_items", async (req: AuthedRequest, res) =
         spaceId,
         parentId: parentId ?? null,
         sprintId: sprintId ?? null,
+        startDate: startDate ? new Date(startDate) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
         orderIndex: orderIndex ?? 0,
       })
@@ -121,6 +124,7 @@ workItemsRouter.patch("/work_items/:id", async (req: AuthedRequest, res) => {
       epicId?: string | null;
       attachments?: Attachment[];
       assigneeId?: string | null;
+      startDate?: string | null;
       dueDate?: string | null;
       sprintId?: string | null;
       parentId?: string | null;
@@ -138,6 +142,7 @@ workItemsRouter.patch("/work_items/:id", async (req: AuthedRequest, res) => {
     if (updates.epicId !== undefined) set.epicId = updates.epicId;
     if (Array.isArray(updates.attachments)) set.attachments = updates.attachments;
     if (updates.assigneeId !== undefined) set.assigneeId = updates.assigneeId;
+    if (updates.startDate !== undefined) set.startDate = updates.startDate ? new Date(updates.startDate) : null;
     if (updates.dueDate !== undefined) set.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
     if (updates.sprintId !== undefined) set.sprintId = updates.sprintId;
     if (updates.parentId !== undefined) set.parentId = updates.parentId;
