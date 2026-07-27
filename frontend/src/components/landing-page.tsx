@@ -235,7 +235,7 @@ export default function LandingPage() {
               and Deliver Better Software.
             </h1>
             <p className="text-[15px] text-slate-600 leading-relaxed mb-8 max-w-[480px]">
-              Manage projects, connect GitHub repositories, analyze your codebase, 
+              Manage projects, connect GitHub repositories, analyze your codebase,
               and resolve production issues with Unify Intelli.
             </p>
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -294,7 +294,8 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-[360px] max-h-[90vh] overflow-y-auto scroll-thin z-10 rounded-[22px] sm:rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-4 sm:p-8 my-4 flex flex-col items-center"
+              className="relative w-full max-w-[400px] sm:max-w-[360px] max-h-[90vh] overflow-y-auto scroll-thin z-10 rounded-[22px] sm:rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-6 sm:p-8 flex flex-col items-center"
+            // className="relative w-full max-w-[360px] max-h-[90vh] overflow-y-auto scroll-thin z-10 rounded-[22px] sm:rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-4 sm:p-8 my-4 flex flex-col items-center"
             >
               {/* Close */}
               <button
