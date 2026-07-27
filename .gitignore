@@ -31,3 +31,6 @@ Thumbs.db
 
 # Vector DB (auto-generated, large binary files)
 ai-agent/rag/chroma_db/
+
+# Kubernetes Secrets
+k8s/secrets.yaml

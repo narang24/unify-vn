@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: ai-agent
-          image: <ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/unify-ai-agent:latest
+          image: 564325282647.dkr.ecr.ap-south-1.amazonaws.com/unify-ai-agent:latest
 
           imagePullPolicy: Always
 
@@ -28,4 +28,4 @@ spec:
 
           envFrom:
             - secretRef:
-                name: ai-agent-secret
+                name: unify-secret

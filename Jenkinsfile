@@ -1,135 +1,87 @@
 pipeline {
-
     agent any
 
     environment {
         AWS_REGION = "ap-south-1"
-        ECR_REPOSITORY = "unify-backend"
+        AWS_ACCOUNT_ID = "564325282647"
 
-        ACCOUNT_ID = credentials('aws-account-id')
-
-        IMAGE = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
-
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        FRONTEND_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unify-frontend"
+        BACKEND_IMAGE  = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unify-backend"
+        AI_IMAGE       = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unify-ai-agent"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/<YOUR_USERNAME>/<YOUR_REPO>.git'
+                checkout scm
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Frontend') {
             steps {
-                dir('backend') {
-                    sh 'npm ci'
+                sh 'docker build -t $FRONTEND_IMAGE:latest ./frontend'
+            }
+        }
+
+        stage('Build Backend') {
+            steps {
+                sh 'docker build -t $BACKEND_IMAGE:latest ./backend'
+            }
+        }
+
+        stage('Build AI Agent') {
+            steps {
+                sh 'docker build -t $AI_IMAGE:latest ./ai-agent'
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-ecr'
+                ]]) {
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION | \
+                docker login --username AWS \
+                --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                '''
                 }
             }
         }
 
-        stage('Build') {
+        stage('Push Images') {
             steps {
-                dir('backend') {
-                    sh 'npm run build'
-                }
+                sh '''
+                docker push $FRONTEND_IMAGE:latest 
+                docker push $BACKEND_IMAGE:latest 
+                docker push $AI_IMAGE:latest 
+                '''
             }
         }
 
-        stage('Test') {
+        stage('Deploy') {
             steps {
-                dir('backend') {
-                    sh 'npm test || true'
-                }
-            }
-        }
+                sh '''
+                kubectl apply -R -f k8s/
 
-        stage('Login to Amazon ECR') {
-            steps {
-                sh """
-                aws ecr get-login-password \
-                --region ${AWS_REGION} \
-                | docker login \
-                --username AWS \
-                --password-stdin \
-                ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                """
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                dir('backend') {
-                    sh """
-                    docker build \
-                    -t ${IMAGE}:${IMAGE_TAG} \
-                    .
-                    """
-                }
-            }
-        }
-
-        stage('Push Image') {
-            steps {
-                sh """
-                docker push ${IMAGE}:${IMAGE_TAG}
-                docker tag ${IMAGE}:${IMAGE_TAG} ${IMAGE}:latest
-                docker push ${IMAGE}:latest
-                """
-            }
-        }
-
-        stage('Deploy Gateway') {
-            steps {
-                sh """
-                kubectl set image deployment/gateway \
-                gateway=${IMAGE}:${IMAGE_TAG} \
-                -n unify
-                """
-            }
-        }
-
-        stage('Deploy Auth') {
-            steps {
-                sh """
-                kubectl set image deployment/auth \
-                auth=${IMAGE}:${IMAGE_TAG} \
-                -n unify
-                """
-            }
-        }
-
-        stage('Deploy Workspace') {
-            steps {
-                sh """
-                kubectl set image deployment/workspace \
-                workspace=${IMAGE}:${IMAGE_TAG} \
-                -n unify
-                """
-            }
-        }
-
-        stage('Wait For Rollout') {
-            steps {
-                sh """
-                kubectl rollout status deployment/gateway -n unify
-                kubectl rollout status deployment/auth -n unify
-                kubectl rollout status deployment/workspace -n unify
-                """
+                kubectl rollout restart deployment/frontend -n unify
+                kubectl rollout restart deployment/gateway -n unify
+                kubectl rollout restart deployment/auth -n unify
+                kubectl rollout restart deployment/workspace -n unify
+                kubectl rollout restart deployment/ai-agent -n unify
+                '''
             }
         }
     }
-
     post {
-
         success {
-            echo "Deployment Successful"
+            echo "Deployment Successful!"
         }
 
         failure {
-            echo "Deployment Failed"
+            echo "Deployment Failed!"
         }
     }
 }

@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: <ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/unify-frontend:latest
+          image: 564325282647.dkr.ecr.ap-south-1.amazonaws.com/unify-frontend:latest
 
           imagePullPolicy: Always
 
@@ -28,4 +28,6 @@ spec:
 
           envFrom:
             - configMapRef:
-                name: backend-config
+                name: unify-config
+            - secretRef:
+                name: unify-secret
