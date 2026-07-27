@@ -20,8 +20,8 @@ import httpProxy from "http-proxy";
 import { env } from "./config/env.js";
 
 const GATEWAY_PORT = env.gatewayPort;   // 8000
-const AUTH_PORT    = env.port;          // 8001
-const WS_PORT      = env.workspacePort; // 8002
+const AUTH_PORT = env.port;          // 8001
+const WS_PORT = env.workspacePort; // 8002
 
 const proxy = httpProxy.createProxyServer({
   changeOrigin: true,

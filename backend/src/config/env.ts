@@ -10,7 +10,7 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
 
   // Auth service port (default 8001)
-  port: Number(process.env.PORT ?? 8001),
+  port: Number(process.env.AUTH_PORT ?? 8001),
 
   // Workspace service port (default 8002)
   workspacePort: Number(process.env.WORKSPACE_PORT ?? 8002),
