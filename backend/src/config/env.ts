@@ -18,6 +18,8 @@ export const env = {
   // Gateway port (default 8000) — used by the Node.js dev proxy and nginx
   gatewayPort: Number(process.env.GATEWAY_PORT ?? 8000),
 
+  backendUrl: process.env.BACKEND_URL ?? "http://localhost:8000",
+
   serviceName: process.env.SERVICE_NAME ?? "unify-backend",
   frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:3000",
   apiPrefix: process.env.API_PREFIX ?? "/api/v1",

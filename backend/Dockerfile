@@ -42,8 +42,8 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 
-# Default service if none is specified at `docker run` / k8s env.
-ENV SERVICE=gateway
+# # Default service if none is specified at `docker run` / k8s env.
+# ENV SERVICE=gateway
 
 USER backend
 
@@ -54,9 +54,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.SERVICE==='auth'?8001:process.env.SERVICE==='workspace'?8002:8000)+'/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 # Select the entrypoint based on $SERVICE at container start.
-CMD ["sh", "-c", "\
-  case \"$SERVICE\" in \
-    auth) exec node dist/services/auth/src/index.js ;; \
-    workspace) exec node dist/services/workspace/src/index.js ;; \
-    gateway|*) exec node dist/src/index.js ;; \
-  esac"]
+# CMD ["sh", "-c", "\
+#   case \"$SERVICE\" in \
+#     auth) exec node dist/services/auth/src/index.js ;; \
+#     workspace) exec node dist/services/workspace/src/index.js ;; \
+#     gateway|*) exec node dist/src/index.js ;; \
+#   esac"]
+
+CMD ["npm", "run", "start:full"]

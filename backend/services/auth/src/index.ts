@@ -213,7 +213,7 @@ passport.use(
     {
       clientID: env.googleClientId,
       clientSecret: env.googleClientSecret,
-      callbackURL: `${env.apiPrefix}/auth/oauth/google/callback`,
+      callbackURL: `${env.backendUrl}${env.apiPrefix}/auth/oauth/google/callback`,
       scope: ["openid", "profile", "email"],
       issuer: "https://accounts.google.com",
       authorizationURL: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -239,7 +239,7 @@ passport.use(
     {
       clientID: env.githubClientId,
       clientSecret: env.githubClientSecret,
-      callbackURL: `${env.apiPrefix}/auth/oauth/github/callback`,
+      callbackURL: `${env.backendUrl}${env.apiPrefix}/auth/oauth/github/callback`,
       // `repo` + `read:user` let users browse code/issues/PRs/branches/commits
       // right after connecting — no manual PAT or webhook setup required.
       scope: ["user:email", "read:user", "repo"],
@@ -270,7 +270,7 @@ passport.use(
     {
       clientID: env.gitlabClientId,
       clientSecret: env.gitlabClientSecret,
-      callbackURL: `${env.apiPrefix}/auth/oauth/gitlab/callback`,
+      callbackURL: `${env.backendUrl}${env.apiPrefix}/auth/oauth/gitlab/callback`,
     },
     async (_accessToken: string, _refreshToken: string, profile: OAuthProfile, done: any) => {
       try {
