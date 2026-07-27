@@ -164,20 +164,36 @@ const app = express();
 // internal auth service address (port 8001).
 app.set("trust proxy", true);
 
-app.use(
+// app.use(
+//   cors({
+//     origin: (origin, callback) => {
+//       if (env.nodeEnv === "development") {
+//         if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+//           return callback(null, true);
+//         }
+//       }
+//       if (origin === env.frontendUrl) return callback(null, true);
+//       callback(new Error("Not allowed by CORS"));
+//     },
+//     credentials: true,
+//   }),
+// );
+app.use((req, res, next) => {
+  if (req.path.startsWith(`${env.apiPrefix}/auth/oauth`)) {
+    return next(); // skip CORS entirely for OAuth redirect/callback routes
+  }
   cors({
     origin: (origin, callback) => {
       if (env.nodeEnv === "development") {
-        if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
-          return callback(null, true);
-        }
+        if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
       }
       if (origin === env.frontendUrl) return callback(null, true);
       callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-  }),
-);
+  })(req, res, next);
+});
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(

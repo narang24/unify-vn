@@ -26,7 +26,6 @@ const app = express();
 app.use(
   cors({
     origin: (origin, callback) => {
-      console.log("[CORS] incoming origin:", origin, "| expected:", env.frontendUrl);
       if (env.nodeEnv === "development") {
         if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
       }
