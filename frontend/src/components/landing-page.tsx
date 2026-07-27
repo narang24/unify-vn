@@ -181,7 +181,6 @@ export default function LandingPage() {
       .then((d) => {
         if (d?.user) {
           setUser(d.user);
-          router.push("/dashboard");
         }
       })
       .catch(() => null);
@@ -190,7 +189,7 @@ export default function LandingPage() {
   const card = FEATURE_CARDS[idx];
 
   return (
-    <div className="landing-root bg-[#f2f9f8] text-slate-900 flex flex-col items-center relative h-[100dvh] overflow-hidden w-full">
+    <div className="landing-root bg-[#f2f9f8] text-slate-900 flex flex-col items-center relative min-h-[100dvh] overflow-x-hidden w-full">
       {/* ── NAV ─────────────────────────────────────────────────────────── */}
       <header className="landing-nav w-full max-w-[1120px] mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex justify-center items-center gap-2.5">
@@ -218,7 +217,7 @@ export default function LandingPage() {
       </header>
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col w-full max-w-[1120px] mx-auto px-6 py-10">
+      <main className="flex-1 flex flex-col w-full max-w-[1120px] mx-auto px-6 pt-12 pb-6 md:pt-20 md:pb-10">
         <motion.section
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
@@ -236,16 +235,16 @@ export default function LandingPage() {
               and Deliver Better Software.
             </h1>
             <p className="text-[15px] text-slate-600 leading-relaxed mb-8 max-w-[480px]">
-              Organize projects, connect repositories, streamline engineering workflows,
-              and resolve production issues with complete project and codebase context.
+              Manage projects, connect GitHub repositories, analyze your codebase, 
+              and resolve production issues with Unify Intelli.
             </p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
               <Button
                 size="lg"
-                className="group rounded-xl bg-[#0c8f8f] hover:bg-[#0a7a7a] text-white font-medium w-[260px] justify-center h-12 shadow-[0_4px_14px_0_rgba(12,143,143,0.39)] transition-all hover:shadow-[0_6px_20px_rgba(12,143,143,0.23)] hover:-translate-y-[1px] flex items-center gap-2"
-                onClick={() => openAuth("signup")}
+                className="group rounded-xl bg-[#0c8f8f] hover:bg-[#0a7a7a] text-white font-medium w-full sm:w-[260px] justify-center h-12 shadow-[0_4px_14px_0_rgba(12,143,143,0.39)] transition-all hover:shadow-[0_6px_20px_rgba(12,143,143,0.23)] hover:-translate-y-[1px] flex items-center gap-2"
+                onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
               >
-                <span>Let's collaborate</span>
+                <span>{user ? "Go to Dashboard" : "Let's collaborate"}</span>
                 <ExternalLink className="h-4 w-4 opacity-0 -ml-6 transition-all group-hover:opacity-100 group-hover:ml-0" />
               </Button>
             </div>
@@ -295,7 +294,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-[400px] z-10 rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-8 flex flex-col items-center"
+              className="relative w-full max-w-[400px] max-h-[90vh] overflow-y-auto scroll-thin z-10 rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-6 sm:p-8 flex flex-col items-center"
             >
               {/* Close */}
               <button
@@ -445,7 +444,7 @@ export default function LandingPage() {
               </div>
 
               {/* Social icons */}
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
                 {/* Google */}
                 <a
                   href={`${apiBase}/api/v1/auth/oauth/google`}

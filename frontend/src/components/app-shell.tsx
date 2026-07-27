@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { motion, Reorder, useDragControls } from "framer-motion";
 import {
   LayoutGrid,
@@ -44,6 +45,8 @@ import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationPanel } from "@/components/notification-panel";
 import { usePrefs } from "@/lib/prefs-context";
+import { toast } from "@/lib/use-toast";
+import { appEnv } from "@/config/env";
 import type { ConnectedRepository } from "@/lib/repo-types";
 import type { BoardKind } from "@/lib/work-item-types";
 import { cn } from "@/lib/utils";
@@ -163,16 +166,18 @@ export function AppShell(props: AppShellProps) {
             </span>
           </div>
 
-          {/* Centered search */}
-          <GlobalSearch
-            workspaces={props.workspaces}
-            onSelectSpace={(id) => {
-              props.onSelectSpace(id);
-            }}
-            onSelectWorkspace={(id) => {
-              props.onSelectWorkspace(id);
-            }}
-          />
+          <div className="flex-1 px-2 sm:px-4 max-w-md mx-auto">
+            {/* Centered search */}
+            <GlobalSearch
+              workspaces={props.workspaces}
+              onSelectSpace={(id) => {
+                props.onSelectSpace(id);
+              }}
+              onSelectWorkspace={(id) => {
+                props.onSelectWorkspace(id);
+              }}
+            />
+          </div>
 
           <div className="ml-auto flex items-center gap-2">
             <Button size="sm" onClick={onCreateItem} className="hidden rounded-lg sm:inline-flex">
@@ -182,7 +187,7 @@ export function AppShell(props: AppShellProps) {
               <Plus className="h-4 w-4" />
             </Button>
             {/* Icon group — equally spaced */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <ThemeToggle />
               <NotificationPanel onSelectSpace={props.onSelectSpace} />
               <DropdownMenu>
@@ -258,10 +263,10 @@ function SidebarBody({
   return (
     <div className="flex h-full flex-col overflow-y-auto scroll-thin pr-2">
       {/* Circular Unify logo */}
-      <div className={cn("mb-2 flex items-center gap-2.5 px-1.5 py-1", collapsed && "justify-center px-0")}>
+      <Link href="/" className={cn("mb-2 flex items-center gap-2.5 px-1.5 py-1 transition-opacity hover:opacity-80", collapsed && "justify-center px-0")}>
         <Logo size={36} />
         {!collapsed && <span className="text-[18.5px] font-bold tracking-tight text-foreground">Unify</span>}
-      </div>
+      </Link>
 
       {/* Recent / Teams / Starred */}
       <nav className="space-y-0.5">
@@ -287,7 +292,13 @@ function SidebarBody({
       {/* Unify Intelli (highlighted) */}
       <div className="mt-3 flex justify-center px-1.5">
         <HoverBorderGradient
-          onClick={onOpenIntelli}
+          onClick={() => {
+            if (!appEnv.enableIntelli) {
+              toast({ title: "Upcoming", description: "Unify Intelli is coming soon!" });
+              return;
+            }
+            onOpenIntelli?.();
+          }}
           active={intelliActive}
           containerClassName={cn("w-full max-w-[225px]", collapsed && "w-min justify-center")}
           className={cn("group gap-2.5 px-2.5 py-2", collapsed && "px-0 justify-center")}

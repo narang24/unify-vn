@@ -92,7 +92,7 @@ export function BoardView({
             }}
             onDrop={() => handleDrop(col.id)}
             className={cn(
-              "flex w-72 shrink-0 flex-col self-start rounded-xl border-[3px] p-3 transition-all duration-200",
+              "flex w-[85vw] max-w-[280px] sm:w-72 sm:max-w-none shrink-0 flex-col self-start rounded-xl border-[3px] p-3 transition-all duration-200",
               isOver
                 ? "border-teal-800 bg-teal-800/10 shadow-[inset_0_1px_12px_rgba(0,128,128,0.12)]"
                 : isSource

@@ -16,7 +16,7 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: `${appEnv.appName} - AI-native project workspace`,
+  title: "Unify-VN",
   description:
     "Lightweight project management for students, startups, and open-source teams.",
   icons: {

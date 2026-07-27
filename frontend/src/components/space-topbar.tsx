@@ -45,6 +45,7 @@ import { BoardIntelliSidebar } from "@/components/board-intelli-sidebar";
 import { toast } from "@/lib/use-toast";
 import { cn } from "@/lib/utils";
 import { DEFAULT_COLUMNS, type BoardColumn, type BoardKind, type SpaceWorkItem, type Sprint } from "@/lib/work-item-types";
+import { appEnv } from "@/config/env";
 import type { ConnectedRepository } from "@/lib/repo-types";
 
 export type SpaceView = "summary" | "list" | "board" | "timeline" | "calendar" | "backlog" | "reports";
@@ -171,6 +172,10 @@ export function SpaceTopbar({
   }
 
   function handleOpenIntelli(item?: SpaceWorkItem) {
+    if (!appEnv.enableIntelli) {
+      toast({ title: "Upcoming", description: "Unify Intelli is coming soon!" });
+      return;
+    }
     setIntelliContext(item ?? null);
     setIntelliOpen(true);
   }
@@ -191,7 +196,7 @@ export function SpaceTopbar({
       {/* ── Space header ──────────────────────────────────────────────────── */}
       <div className="border-b border-border-subtle bg-navbar">
         {/* Row 1: space name + right actions */}
-        <div className="flex items-center gap-2 px-5 pt-3 pb-2">
+        <div className="flex items-center justify-between gap-2 px-3 sm:px-5 pt-3 pb-2">
           <div className="flex min-w-0 items-center gap-2">
             {boardType === "kanban" ? (
               <img src="/kanban-sign.png" alt="Kanban" className="h-6 w-6 shrink-0 object-contain" />
@@ -207,12 +212,12 @@ export function SpaceTopbar({
               </div>
             )}
             <h1 className="truncate text-[15px] font-bold text-foreground">{spaceName}</h1>
-            <BoardCapsule kind={boardType} className="shrink-0" />
+            <BoardCapsule kind={boardType} className="hidden sm:flex shrink-0" />
             {workspaceName && <span className="hidden text-[12px] font-semibold text-muted sm:inline">| {workspaceName}</span>}
           </div>
 
           {/* Right: action buttons */}
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             <AvatarCircles names={memberNames} size={24} className="mr-0.5" />
 
             <Button variant="outline" size="sm" className="hidden h-8 px-5 gap-1.5 text-[12px] sm:inline-flex" onClick={() => setMembersOpen(true)}>

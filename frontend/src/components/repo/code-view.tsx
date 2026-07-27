@@ -107,7 +107,7 @@ export function CodeView({
     const breadcrumbParts = activeFile ? [repo.name, ...activeFile.path.split("/")] : [repo.name];
 
     return (
-        <div className="flex h-full font-semibold">
+        <div className="flex h-full">
             {/* File tree */}
             <div className="w-64 shrink-0 overflow-y-auto scroll-thin border-r border-border-subtle bg-panel p-2">
                 {treeLoading ? (
@@ -168,7 +168,7 @@ export function CodeView({
                         <pre
                             ref={codeRef}
                             onMouseUp={handleMouseUp}
-                            className="min-h-full whitespace-pre p-4 text-[12.5px] leading-relaxed text-foreground selection:bg-accent/25 font-semibold"
+                            className="min-h-full whitespace-pre p-4 text-[13px] leading-relaxed text-foreground selection:bg-accent/25 font-mono font-normal"
                         >
                             <code>{activeFile.content ?? "// Empty file"}</code>
                         </pre>
