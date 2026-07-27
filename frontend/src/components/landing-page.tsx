@@ -294,7 +294,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-[400px] max-h-[90vh] overflow-y-auto scroll-thin z-10 rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-6 sm:p-8 flex flex-col items-center"
+              className="relative w-full max-w-[360px] max-h-[90vh] overflow-y-auto scroll-thin z-10 rounded-[22px] sm:rounded-[28px] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-4 sm:p-8 my-4 flex flex-col items-center"
             >
               {/* Close */}
               <button
@@ -306,28 +306,28 @@ export default function LandingPage() {
               </button>
 
               {/* Icon badge */}
-              <div className="mb-5 flex items-center justify-center">
+              <div className="mb-3 sm:mb-5 flex items-center justify-center">
                 <Image
                   src="/logo.png"
                   alt="Unify Logo"
                   width={56}
                   height={56}
-                  className="object-contain rounded-full"
+                  className="object-contain rounded-full w-10 h-10 sm:w-14 sm:h-14"
                 />
               </div>
 
               {/* Title */}
-              <h2 className="text-[22px] font-bold text-gray-900 tracking-tight mb-1 text-center">
+              <h2 className="text-[18px] sm:text-[22px] font-bold text-gray-900 tracking-tight mb-0.5 sm:mb-1 text-center">
                 {authTab === "signin" ? "Sign in with email" : "Create your account"}
               </h2>
-              <p className="text-[13px] text-gray-400 text-center leading-relaxed mb-6 px-2">
+              <p className="text-[12px] sm:text-[13px] text-gray-400 text-center leading-relaxed mb-4 sm:mb-6 px-2">
                 {authTab === "signin"
                   ? "Welcome back! Enter your details to continue."
                   : "Join Unify and start shipping faster with your team."}
               </p>
 
               {/* Tab switcher */}
-              <div className="flex w-full mb-5 p-[3px] bg-gray-100 rounded-xl" role="tablist">
+              <div className="flex w-full mb-3 sm:mb-5 p-[3px] bg-gray-100 rounded-xl" role="tablist">
                 <button
                   role="tab"
                   aria-selected={authTab === "signin"}
@@ -347,8 +347,7 @@ export default function LandingPage() {
               </div>
 
               {/* Form */}
-              {/* Form */}
-              <form className="w-full flex flex-col gap-3" onSubmit={handleEmailAuth} noValidate>
+              <form className="w-full flex flex-col gap-2 sm:gap-3" onSubmit={handleEmailAuth} noValidate>
                 {authTab === "signup" && (
                   <div className="relative flex items-center">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3.5">
@@ -437,14 +436,14 @@ export default function LandingPage() {
               </form>
 
               {/* Divider */}
-              <div className="flex items-center gap-3 w-full my-5">
+              <div className="flex items-center gap-3 w-full my-3 sm:my-5">
                 <div className="flex-1 h-px bg-gray-200" />
                 <span className="text-[11px] text-gray-400">Or sign in with</span>
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
 
               {/* Social icons */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+              <div className="flex flex-row items-center gap-2 sm:gap-3 w-full">
                 {/* Google */}
                 <a
                   href={`${apiBase}/api/v1/auth/oauth/google`}
@@ -457,7 +456,7 @@ export default function LandingPage() {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                   </svg>
-                  Google
+                  <span className="hidden sm:inline">Google</span>
                 </a>
 
                 {/* GitHub */}
@@ -469,7 +468,7 @@ export default function LandingPage() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="#1f2328" aria-hidden="true">
                     <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
                   </svg>
-                  GitHub
+                  <span className="hidden sm:inline">GitHub</span>
                 </a>
 
                 {/* GitLab */}
@@ -481,7 +480,7 @@ export default function LandingPage() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="#FC6D26" aria-hidden="true">
                     <path d="M4.845.904a.93.93 0 0 0-.888.63L.108 11.854a1.307 1.307 0 0 0 .474 1.46L12 22.096l11.418-8.782a1.307 1.307 0 0 0 .474-1.46L20.044 1.534a.93.93 0 0 0-.888-.63.93.93 0 0 0-.888.63l-2.552 7.85H8.284L5.732 1.534A.93.93 0 0 0 4.845.904z" />
                   </svg>
-                  GitLab
+                  <span className="hidden sm:inline">GitLab</span>
                 </a>
               </div>
             </motion.div>
