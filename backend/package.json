@@ -13,6 +13,7 @@
     "start:auth": "dotenv -e .env.production -- node dist/services/auth/src/index.js",
     "start:workspace": "dotenv -e .env.production -- node dist/services/workspace/src/index.js",
     "start:gateway": "dotenv -e .env.production -- node dist/src/index.js",
+    "start:full": "concurrently --names \"gateway,auth,workspace\" \"npm:start:gateway\" \"npm:start:auth\" \"npm:start:workspace\"",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:push": "dotenv -e .env.development -- drizzle-kit push",
