@@ -16,6 +16,11 @@ import { deploymentsRouter } from "./routes/deployments.js";
 import { incidentsRouter } from "./routes/incidents.js";
 import { githubRouter } from "./routes/github.js";
 import { prefsRouter } from "./routes/prefs.js";
+import { teamsRouter } from "./routes/teams.js";
+import { notificationsRouter } from "./routes/notifications.js";
+import { usersRouter } from "./routes/users.js";
+import { membersRouter } from "./routes/members.js";
+import { intelliRouter } from "./routes/intelli.js";
 
 // ─── App Setup ───────────────────────────────────────────────────────────────
 
@@ -57,6 +62,11 @@ app.use(env.apiPrefix, deploymentsRouter);
 app.use(env.apiPrefix, incidentsRouter);
 app.use(env.apiPrefix, githubRouter);
 app.use(env.apiPrefix, prefsRouter);
+app.use(env.apiPrefix, teamsRouter);
+app.use(env.apiPrefix, notificationsRouter);
+app.use(env.apiPrefix, usersRouter);
+app.use(env.apiPrefix, membersRouter);
+app.use(env.apiPrefix, intelliRouter);
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 

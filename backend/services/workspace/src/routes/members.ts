@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { eq, and, ne } from "drizzle-orm";
-import { db } from "../../../../../src/db/index.js";
-import { spaceMembers, users } from "../../../../../src/db/schema.js";
-import { requireAuth, type AuthedRequest } from "../../middleware/auth.js";
+import { db } from "../../../../src/db/index.js";
+import { spaceMembers, users } from "../../../../src/db/schema.js";
+import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 
 export const membersRouter = Router();
 membersRouter.use(requireAuth);

@@ -221,6 +221,7 @@ export function RepoWorkspace({
                 open={aiOpen}
                 onClose={() => setAiOpen(false)}
                 repoName={repo.name}
+                repoId={repo.id}
                 selectMode={selectMode}
                 onToggleSelectMode={() => setSelectMode((s) => !s)}
                 contextChips={contextChips}

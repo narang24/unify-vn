@@ -2,30 +2,27 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X, Sparkles, SendHorizontal, Bot, Paperclip, Lightbulb,
-  TrendingUp, AlertTriangle, CheckCircle2, Clock
-} from "lucide-react";
+import { X, Sparkles, Lightbulb, TrendingUp, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BorderBeam } from "@/components/ui/border-beam";
+import { IntelliMessageInput } from "@/components/intelli-chat/intelli-message-input";
+import { IntelliMessageThread } from "@/components/intelli-chat/intelli-message-thread";
+import {
+  getIntelliSession,
+  sendIntelliMessage,
+  type ApiIntelliMessage,
+} from "@/lib/api";
+import { localId, messageFromApi, resumeOrCreateIntelliSession, type IntelliChatMessage } from "@/lib/intelli-types";
 import type { SpaceWorkItem } from "@/lib/work-item-types";
 
 interface BoardIntelliSidebarProps {
   open: boolean;
   onClose: () => void;
   spaceName: string;
+  /** Used as the fallback chat context (contextType "space") when no work item is preloaded. */
+  spaceId: string;
   items: SpaceWorkItem[];
   preloadedContext?: SpaceWorkItem | null;
-}
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 9);
 }
 
 const BOARD_SUGGESTIONS = [
@@ -42,77 +39,95 @@ const INSIGHT_CARDS = [
     color: "text-accent",
     bg: "bg-accent/10",
     title: "Velocity",
-    body: "Team completed 0 items this week. Encourage moving In Review items to Done.",
+    body: "Ask Unify Intelli how the team is trending this sprint.",
   },
   {
     icon: AlertTriangle,
     color: "text-amber-500",
     bg: "bg-amber-500/10",
     title: "At Risk",
-    body: "2 work items have been In Progress for over 5 days without updates.",
+    body: "Ask which items have gone stale without an update.",
   },
   {
     icon: CheckCircle2,
     color: "text-emerald-500",
     bg: "bg-emerald-500/10",
-    title: "Well Done",
-    body: "All critical-priority items are assigned. Great coverage!",
+    title: "Coverage",
+    body: "Ask whether every work item has an owner assigned.",
   },
 ];
 
-function buildContext(items: SpaceWorkItem[], preloaded: SpaceWorkItem | null | undefined): string {
-  if (preloaded) {
-    return `Work item context loaded: "${preloaded.title}" (${preloaded.type}, status: ${preloaded.status}${preloaded.description ? `, description: ${preloaded.description}` : ""}).`;
-  }
-  return `Board context: ${items.length} total items, ${items.filter(i => i.status === "done").length} done, ${items.filter(i => i.status === "inprogress").length} in progress.`;
-}
-
-export function BoardIntelliSidebar({
-  open,
-  onClose,
-  spaceName,
-  items,
-  preloadedContext,
-}: BoardIntelliSidebarProps) {
-  const [messages, setMessages] = React.useState<Message[]>([]);
+export function BoardIntelliSidebar({ open, onClose, spaceName, spaceId, items, preloadedContext }: BoardIntelliSidebarProps) {
+  const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [messages, setMessages] = React.useState<IntelliChatMessage[]>([]);
+  const [loadingSession, setLoadingSession] = React.useState(false);
   const [input, setInput] = React.useState("");
+  const [sending, setSending] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
-  // Preload context when a work item is opened
+  // Resume (or create) a session scoped to the work item, or to the board itself.
   React.useEffect(() => {
     if (!open) return;
-    if (preloadedContext) {
-      const contextMsg: Message = {
-        id: uid(),
-        role: "assistant",
-        content: `🔍 Context loaded for **"${preloadedContext.title}"** (${preloadedContext.type} · ${preloadedContext.status}).\n\n${preloadedContext.description ? `📝 Description: ${preloadedContext.description}\n\n` : ""}I understand this work item fully. Ask me anything about it, or tell me what you'd like to change!`,
-      };
-      setMessages([contextMsg]);
-      setInput("");
-    } else if (messages.length === 0) {
-      setMessages([]);
-    }
-  }, [open, preloadedContext]);
+    let cancelled = false;
+    setLoadingSession(true);
+    setMessages([]);
+    setSessionId(null);
+
+    const contextType = preloadedContext ? "work_item" : "space";
+    const contextId = preloadedContext ? preloadedContext.id : spaceId;
+
+    resumeOrCreateIntelliSession(contextType, contextId)
+      .then((session) => getIntelliSession(session.id))
+      .then(({ session, messages: msgs }) => {
+        if (cancelled) return;
+        setSessionId(session.id);
+        setMessages(msgs.map(messageFromApi));
+      })
+      .catch((err) => {
+        console.error("[BoardIntelliSidebar] failed to resume session", err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSession(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, preloadedContext?.id, spaceId]);
 
   React.useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  function send(text?: string) {
+  async function send(text?: string) {
     const msg = (text ?? input).trim();
-    if (!msg) return;
+    if (!msg || !sessionId || sending) return;
     setInput("");
+    setSending(true);
 
-    const userMsg: Message = { id: uid(), role: "user", content: msg };
-    const context = buildContext(items, preloadedContext);
-    const reply: Message = {
-      id: uid(),
-      role: "assistant",
-      content: `🤖 I'm analyzing your board context for **${spaceName}**.\n\n${context}\n\n*Unify Intelli's reasoning engine will be connected in a future release. This is a preview of the interaction model.*`,
-    };
-    setMessages((m) => [...m, userMsg, reply]);
+    const userMsg: IntelliChatMessage = { id: localId(), role: "user", content: msg, createdAt: new Date().toISOString() };
+    const pendingMsg: IntelliChatMessage = { id: localId(), role: "assistant", content: "", pending: true };
+    setMessages((m) => [...m, userMsg, pendingMsg]);
+
+    try {
+      const result = await sendIntelliMessage(sessionId, msg);
+      if (result.message) {
+        const assistantMsg = messageFromApi(result.message as ApiIntelliMessage);
+        setMessages((m) => m.map((x) => (x.id === pendingMsg.id ? assistantMsg : x)));
+      } else {
+        setMessages((m) =>
+          m.map((x) => (x.id === pendingMsg.id ? { ...x, pending: false, error: true, content: result.error ?? "Something went wrong." } : x)),
+        );
+      }
+    } catch (err) {
+      console.error("[BoardIntelliSidebar] send failed", err);
+      setMessages((m) =>
+        m.map((x) => (x.id === pendingMsg.id ? { ...x, pending: false, error: true, content: "Something went wrong." } : x)),
+      );
+    } finally {
+      setSending(false);
+    }
   }
 
   const hasMessages = messages.length > 0;
@@ -121,7 +136,6 @@ export function BoardIntelliSidebar({
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
@@ -132,23 +146,23 @@ export function BoardIntelliSidebar({
             onClick={onClose}
           />
 
-          {/* Sidebar */}
           <motion.aside
             key="sidebar"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.22, ease: "easeOut" }}
-            className="fixed right-0 top-0 z-50 flex h-screen w-[400px] flex-col border-l border-border-subtle bg-panel shadow-2xl"
+            className="fixed right-0 top-0 z-50 flex h-screen w-full flex-col border-l border-border-subtle bg-panel shadow-2xl sm:w-[400px]"
           >
-            {/* Header */}
             <div className="flex items-center gap-2.5 border-b border-border-subtle px-4 py-3.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
                 <Sparkles className="h-4 w-4 text-accent" />
               </div>
               <div className="flex-1">
                 <p className="text-[13.5px] font-semibold text-foreground">Unify Intelli</p>
-                <p className="text-[10.5px] font-semibold text-muted">{spaceName} · AI Insights</p>
+                <p className="truncate text-[10.5px] font-semibold text-muted">
+                  {preloadedContext ? preloadedContext.title : `${spaceName} · AI Insights`}
+                </p>
               </div>
               <button
                 onClick={onClose}
@@ -159,11 +173,13 @@ export function BoardIntelliSidebar({
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              {!hasMessages ? (
-                /* Hero state */
-                <div className="flex flex-1 flex-col items-center justify-center gap-5 p-5">
+              {loadingSession ? (
+                <div className="flex flex-1 items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted" />
+                </div>
+              ) : !hasMessages ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto p-5">
                   <div className="text-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 ring-1 ring-accent/20">
                       <Lightbulb className="h-6 w-6 text-accent" />
@@ -174,7 +190,6 @@ export function BoardIntelliSidebar({
                     </p>
                   </div>
 
-                  {/* Insight cards */}
                   <div className="w-full space-y-2">
                     {INSIGHT_CARDS.map((card, i) => {
                       const Icon = card.icon;
@@ -192,7 +207,6 @@ export function BoardIntelliSidebar({
                     })}
                   </div>
 
-                  {/* Suggestion chips */}
                   <div className="w-full">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Try asking</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -209,34 +223,13 @@ export function BoardIntelliSidebar({
                   </div>
                 </div>
               ) : (
-                /* Chat state */
-                <div className="flex-1 space-y-3 overflow-y-auto scroll-thin p-4">
-                  {messages.map((m) => (
-                    <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                      <div
-                        className={cn(
-                          "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold leading-relaxed whitespace-pre-line",
-                          m.role === "user"
-                            ? "bg-accent text-white"
-                            : "border border-border-subtle bg-panel-strong/30 text-foreground"
-                        )}
-                      >
-                        {m.role === "assistant" && (
-                          <div className="mb-1 flex items-center gap-1 text-[10.5px] font-semibold text-accent">
-                            <Bot className="h-3 w-3" /> Unify Intelli
-                          </div>
-                        )}
-                        {m.content}
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={bottomRef} />
+                <div className="flex-1 overflow-y-auto scroll-thin p-3">
+                  <IntelliMessageThread ref={bottomRef} messages={messages} compact />
                 </div>
               )}
 
-              {/* Composer */}
               <div className="border-t border-border-subtle p-3">
-                {hasMessages && (
+                {hasMessages && !loadingSession && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {BOARD_SUGGESTIONS.slice(0, 3).map((s) => (
                       <button
@@ -249,31 +242,15 @@ export function BoardIntelliSidebar({
                     ))}
                   </div>
                 )}
-                <div className="relative overflow-hidden rounded-2xl border border-border-subtle bg-panel shadow-sm">
+                <div className="relative overflow-hidden rounded-2xl">
                   <BorderBeam size={48} duration={10} colorFrom="var(--accent)" colorTo="transparent" />
-                  <div className="relative z-10 flex items-end gap-2 p-2.5">
-                    <textarea
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          send();
-                        }
-                      }}
-                      rows={1}
-                      placeholder="Ask about this board…"
-                      className="max-h-24 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] font-semibold text-foreground placeholder:text-muted focus:outline-none"
-                    />
-                    <button
-                      onClick={() => send()}
-                      disabled={!input.trim()}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40"
-                      aria-label="Send"
-                    >
-                      <SendHorizontal className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  <IntelliMessageInput
+                    value={input}
+                    onChange={setInput}
+                    onSend={() => send()}
+                    sending={sending || loadingSession}
+                    placeholder="Ask about this board…"
+                  />
                 </div>
               </div>
             </div>

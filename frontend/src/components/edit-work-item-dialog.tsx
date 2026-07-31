@@ -216,7 +216,7 @@ export function EditWorkItemDialog({
         )}
 
         <form onSubmit={handleSubmit} className="flex h-full max-h-[72vh] flex-col overflow-y-auto scroll-thin">
-          <div className="grid flex-1 grid-cols-[1fr_256px] divide-x divide-border-subtle overflow-hidden">
+          <div className="grid flex-1 grid-cols-1 divide-y divide-border-subtle overflow-hidden md:grid-cols-[1fr_256px] md:divide-x md:divide-y-0">
             {/* Left — main fields or Smart Assignee view */}
             <div className="overflow-y-auto scroll-thin">
               {showAssigneeRec ? (
@@ -445,7 +445,7 @@ function AssigneeCard({
       <div className="my-3 h-[2px] rounded-full bg-foreground/10" />
 
       {/* Skills & Reasons side by side */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {/* Skills */}
         <div>
           <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-muted">Skills</p>

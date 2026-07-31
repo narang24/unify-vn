@@ -351,7 +351,7 @@ export function WorkItemDialog({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto scroll-thin px-5 pb-3 pt-1 font-semibold flex flex-col gap-3">
 
           {/* Top Attributes */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             <div className="space-y-1 col-span-2">
               <Label className="font-semibold text-muted text-[12px]">Space</Label>
               <Select value={selectedSpace} onChange={setSelectedSpace} options={spaceOptions} />

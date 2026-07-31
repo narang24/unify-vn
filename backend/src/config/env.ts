@@ -41,6 +41,14 @@ export const env = {
   githubClientId: process.env.GITHUB_CLIENT_ID ?? "",
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
 
+  // SMTP (email delivery — invitation emails, etc). No-ops with a warning in
+  // dev if SMTP_HOST is unset; see backend/services/workspace/src/lib/email.ts.
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: Number(process.env.SMTP_PORT ?? 587),
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPassword: process.env.SMTP_PASSWORD ?? "",
+  smtpFrom: process.env.SMTP_FROM ?? "Unify <no-reply@unify.dev>",
+
   // GitLab OAuth 2.0
   gitlabClientId: process.env.GITLAB_CLIENT_ID ?? "",
   gitlabClientSecret: process.env.GITLAB_CLIENT_SECRET ?? "",

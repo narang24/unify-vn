@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, GitBranch, Kanban, Bot } from "lucide-react";
 
 import { getToken, clearToken, fetchWithAuth, setToken } from "@/lib/auth";
 import { toast } from "@/lib/use-toast";
 import { AppShell, type ShellWorkspace, type NavKey } from "@/components/app-shell";
-import { RecentsPanel, StarredPanel, TeamsPanel } from "@/components/nav-panels";
+import { RecentsPanel, StarredPanel } from "@/components/nav-panels";
+import { TeamsTable } from "@/components/teams/teams-table";
 import { usePrefs } from "@/lib/prefs-context";
 import { SpaceTopbar } from "@/components/space-topbar";
 import { RepoWorkspace } from "@/components/repo/repo-workspace";
@@ -120,6 +121,7 @@ function mapApiSprint(s: api.ApiSprint): Sprint {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
   // ── Email/password auth state ────────────────────────────────────────────
@@ -144,7 +146,21 @@ export default function DashboardPage() {
   const [itemDefaultDue, setItemDefaultDue] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<WorkItem | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
-  const [activeNav, setActiveNav] = useState<NavKey | null>(null);
+  const [activeNav, setActiveNavState] = useState<NavKey | null>(() => {
+    const tab = searchParams.get("tab");
+    return tab === "recent" || tab === "teams" || tab === "starred" ? tab : null;
+  });
+  const setActiveNav = useCallback(
+    (nav: NavKey | null) => {
+      setActiveNavState(nav);
+      const params = new URLSearchParams(searchParams.toString());
+      if (nav) params.set("tab", nav);
+      else params.delete("tab");
+      const qs = params.toString();
+      router.replace(`/dashboard${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
   const { pushRecent } = usePrefs();
 
   // ── Repositories (first-class sidebar entities) ─────────────────────────
@@ -941,7 +957,7 @@ export default function DashboardPage() {
         ) : activeNav === "starred" ? (
           <StarredPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
         ) : activeNav === "teams" ? (
-          <TeamsPanel workspaces={shellWorkspaces} repositories={repositories} currentUser={user.fullName || user.email} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
+          <TeamsTable currentUser={user} />
         ) : intelliOpen ? (
           <UnifyIntelliWorkspace
             preloadedContext={intelliContext}

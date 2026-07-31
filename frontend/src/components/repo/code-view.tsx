@@ -3,13 +3,14 @@
 import * as React from "react";
 import { useRef, useState, useEffect } from "react";
 // import { CodeBlock } from "@/components/ui/code-block";
-import { ChevronRight, GitBranch, Check, Loader2 } from "lucide-react";
+import { ChevronRight, GitBranch, Check, Loader2, Files } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet } from "@/components/ui/sheet";
 import { FileTree } from "@/components/repo/file-tree";
 import { CodeSelectionTooltip, type CodeSelectionInfo } from "@/components/repo/code-selection-tooltip";
 import type { ConnectedRepository, ContextChip, RepoFileNode } from "@/lib/repo-types";
@@ -41,6 +42,7 @@ export function CodeView({
     const [treeLoading, setTreeLoading] = useState(true);
     const [live, setLive] = useState(false);
     const [selection, setSelection] = useState<CodeSelectionInfo | null>(null);
+    const [mobileTreeOpen, setMobileTreeOpen] = useState(false);
     const codeRef = useRef<HTMLPreElement>(null);
 
     // Load real branches once.
@@ -106,29 +108,46 @@ export function CodeView({
 
     const breadcrumbParts = activeFile ? [repo.name, ...activeFile.path.split("/")] : [repo.name];
 
+    const fileTreeContent = treeLoading ? (
+        <div className="flex items-center gap-1.5 px-2 py-3 text-[12px] text-muted">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading files…
+        </div>
+    ) : (
+        <FileTree
+            nodes={tree}
+            activePath={activeFile?.path ?? null}
+            onSelectFile={(node) => {
+                openFile(node);
+                if (node.type === "file") setMobileTreeOpen(false);
+            }}
+            selectMode={selectMode}
+            selectedPaths={selectedPaths}
+            onToggleSelect={toggleSelect}
+        />
+    );
+
     return (
         <div className="flex h-full">
-            {/* File tree */}
-            <div className="w-64 shrink-0 overflow-y-auto scroll-thin border-r border-border-subtle bg-panel p-2">
-                {treeLoading ? (
-                    <div className="flex items-center gap-1.5 px-2 py-3 text-[12px] text-muted">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading files…
-                    </div>
-                ) : (
-                    <FileTree
-                        nodes={tree}
-                        activePath={activeFile?.path ?? null}
-                        onSelectFile={openFile}
-                        selectMode={selectMode}
-                        selectedPaths={selectedPaths}
-                        onToggleSelect={toggleSelect}
-                    />
-                )}
+            {/* File tree — inline on desktop, drawer on mobile */}
+            <div className="hidden w-64 shrink-0 overflow-y-auto scroll-thin border-r border-border-subtle bg-panel p-2 md:block">
+                {fileTreeContent}
             </div>
+
+            <Sheet open={mobileTreeOpen} onOpenChange={setMobileTreeOpen} side="left" widthClassName="w-72">
+                {fileTreeContent}
+            </Sheet>
 
             {/* Code panel */}
             <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-center gap-2 border-b border-border-subtle bg-panel px-3 py-2">
+                    <button
+                        onClick={() => setMobileTreeOpen(true)}
+                        className="flex items-center gap-1.5 rounded-md border border-border-subtle p-1.5 text-muted hover:bg-foreground/6 md:hidden"
+                        aria-label="Show files"
+                        title="Show files"
+                    >
+                        <Files className="h-3.5 w-3.5" />
+                    </button>
                     <DropdownMenu>
                         <DropdownMenuTrigger>
                             <button className="flex items-center gap-1.5 rounded-md border border-border-subtle px-2 py-1 text-[12px] font-semibold hover:bg-foreground/6">

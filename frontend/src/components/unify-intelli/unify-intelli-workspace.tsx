@@ -1,124 +1,186 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Paperclip, SendHorizontal, Sparkles, Copy, Share, Edit2, Filter, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Sparkles, Filter, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { BorderBeam } from "@/components/ui/border-beam";
 import { IntelliSidebar, type IntelliPanel } from "@/components/unify-intelli/intelli-sidebar";
-import { SEED_CHATS, newChat, type IntelliChat, type IntelliChatMessage } from "@/lib/intelli-types";
+import { IntelliMessageInput } from "@/components/intelli-chat/intelli-message-input";
+import { IntelliMessageThread } from "@/components/intelli-chat/intelli-message-thread";
+import {
+  createIntelliSession,
+  deleteIntelliSession,
+  getIntelliSession,
+  listIntelliSessions,
+  sendIntelliMessage,
+  type ApiIntelliMessage,
+  type ApiIntelliSession,
+} from "@/lib/api";
+import {
+  localId,
+  messageFromApi,
+  resumeOrCreateIntelliSession,
+  sessionToChat,
+  type IntelliChat,
+  type IntelliChatMessage,
+} from "@/lib/intelli-types";
 import type { SpaceWorkItem } from "@/lib/work-item-types";
 import type { WorkItemPayload } from "@/components/edit-work-item-dialog";
 
-function uid() {
-  return Math.random().toString(36).slice(2, 9);
+/** Replace (or insert at the front of) the session list, keeping it sorted by recency. */
+function upsertChat(list: IntelliChat[], session: ApiIntelliSession): IntelliChat[] {
+  const next = sessionToChat(session);
+  const withoutExisting = list.filter((c) => c.id !== next.id);
+  return [next, ...withoutExisting].sort((a, b) => (a.updatedAtIso < b.updatedAtIso ? 1 : -1));
 }
+
+const SUGGESTIONS = [
+  "Why did the last deployment fail?",
+  "Summarize open pull requests",
+  "What's in my backlog?",
+  "Explain the auth flow",
+];
 
 export function UnifyIntelliWorkspace({
   preloadedContext,
   onReviewChanges,
 }: {
   preloadedContext?: SpaceWorkItem | null;
+  /**
+   * Kept for backwards compatibility with callers that expect structured
+   * change suggestions. The backend currently returns plain-text replies
+   * only, so this is never invoked yet.
+   */
   onReviewChanges?: (payload: WorkItemPayload) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [panel, setPanel] = useState<IntelliPanel>("home");
-  const [chats, setChats] = useState<IntelliChat[]>(SEED_CHATS);
+  const [chats, setChats] = useState<IntelliChat[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeMessages, setActiveMessages] = useState<IntelliChatMessage[]>([]);
+  const [loadingActive, setLoadingActive] = useState(false);
   const [search, setSearch] = useState("");
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
 
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null;
 
+  // Load the user's chat history once on mount.
   useEffect(() => {
-    if (preloadedContext) {
-      const chat = newChat();
-      chat.title = `Context: ${preloadedContext.title}`;
-      
-      const sysMsg: IntelliChatMessage = {
-        id: uid(),
-        role: "assistant",
-        content: `🔍 Context loaded for **"${preloadedContext.title}"** (${preloadedContext.type} · ${preloadedContext.status}).\n\nI understand this work item fully. Ask me anything about it, or tell me what you'd like to change!`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      
-      chat.messages = [sysMsg];
-      setChats((c) => [chat, ...c]);
-      setActiveChatId(chat.id);
-      setPanel("home");
-    }
-  }, [preloadedContext]);
+    let cancelled = false;
+    listIntelliSessions()
+      .then((sessions) => {
+        if (cancelled) return;
+        setChats(sessions.map((s) => sessionToChat(s)));
+      })
+      .catch((err) => console.error("[UnifyIntelliWorkspace] failed to load sessions", err))
+      .finally(() => {
+        if (!cancelled) setLoadingSessions(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // When opened with a preloaded work item, resume (or create) its session and load it.
+  useEffect(() => {
+    if (!preloadedContext) return;
+    let cancelled = false;
+    setLoadingActive(true);
+    resumeOrCreateIntelliSession("work_item", preloadedContext.id)
+      .then((session) => getIntelliSession(session.id))
+      .then(({ session, messages }) => {
+        if (cancelled) return;
+        setChats((prev) => upsertChat(prev, session));
+        setActiveChatId(session.id);
+        setActiveMessages(messages.map(messageFromApi));
+        setPanel("home");
+      })
+      .catch((err) => console.error("[UnifyIntelliWorkspace] failed to resume work item session", err))
+      .finally(() => {
+        if (!cancelled) setLoadingActive(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preloadedContext?.id]);
 
   function startNewChat() {
-    const chat = newChat();
-    setChats((c) => [chat, ...c]);
-    setActiveChatId(chat.id);
+    setActiveChatId(null);
+    setActiveMessages([]);
     setPanel("home");
   }
 
-  function editMessage(msgId: string) {
-    if (!activeChat) return;
-    const msgIndex = activeChat.messages.findIndex((m) => m.id === msgId);
-    if (msgIndex === -1) return;
-    const msgToEdit = activeChat.messages[msgIndex];
-    if (msgToEdit.role !== "user") return;
-
-    setInput(msgToEdit.content);
-    setChats((all) =>
-      all.map((c) =>
-        c.id === activeChat.id
-          ? {
-              ...c,
-              messages: c.messages.slice(0, msgIndex),
-            }
-          : c
-      )
-    );
-  }
-
-  function send() {
-    if (!input.trim()) return;
-    const text = input.trim();
-    setInput("");
-
-    let targetId = activeChatId;
-    if (!targetId) {
-      const chat = newChat();
-      chat.title = text.length > 40 ? `${text.slice(0, 40)}…` : text;
-      setChats((c) => [chat, ...c]);
-      targetId = chat.id;
-      setActiveChatId(chat.id);
+  async function selectChat(id: string) {
+    setActiveChatId(id);
+    setPanel("home");
+    setLoadingActive(true);
+    try {
+      const { session, messages } = await getIntelliSession(id);
+      setChats((prev) => upsertChat(prev, session));
+      setActiveMessages(messages.map(messageFromApi));
+    } catch (err) {
+      console.error("[UnifyIntelliWorkspace] failed to load session", err);
+    } finally {
+      setLoadingActive(false);
     }
-
-    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const userMsg: IntelliChatMessage = { id: uid(), role: "user", content: text, timestamp: nowTime };
-    const isModification = preloadedContext && (text.toLowerCase().includes("change") || text.toLowerCase().includes("assign") || text.toLowerCase().includes("set"));
-    
-    const reply: IntelliChatMessage = {
-      id: uid(),
-      role: "assistant",
-      content: isModification 
-        ? "I have analyzed your request and prepared the suggested changes." 
-        : "🔧 Unify Intelli's reasoning engine isn't connected in this preview — this response is a placeholder so the workspace UI can be reviewed end-to-end.",
-      timestamp: nowTime,
-      suggestedChanges: isModification ? {
-        id: preloadedContext.id,
-        title: preloadedContext.title,
-        type: preloadedContext.type,
-        assignee: text.toLowerCase().includes("vanshika") ? "Vanshika Narang" : "Alex Chen",
-        dueDate: "2026-07-31",
-      } : undefined
-    };
-
-    setChats((all) =>
-      all.map((c) =>
-        c.id === targetId
-          ? { ...c, messages: [...c.messages, userMsg, reply], preview: text, updatedAt: "Just now" }
-          : c,
-      ),
-    );
   }
+
+  async function deleteChat(id: string) {
+    try {
+      await deleteIntelliSession(id);
+      setChats((prev) => prev.filter((c) => c.id !== id));
+      if (activeChatId === id) {
+        setActiveChatId(null);
+        setActiveMessages([]);
+      }
+    } catch (err) {
+      console.error("[UnifyIntelliWorkspace] failed to delete session", err);
+    }
+  }
+
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
+    if (!text || sending) return;
+    setInput("");
+    setSending(true);
+
+    const userMsg: IntelliChatMessage = { id: localId(), role: "user", content: text, createdAt: new Date().toISOString() };
+    const pendingMsg: IntelliChatMessage = { id: localId(), role: "assistant", content: "", pending: true };
+    setActiveMessages((m) => [...m, userMsg, pendingMsg]);
+
+    try {
+      let sessionId = activeChatId;
+      if (!sessionId) {
+        const session = await createIntelliSession();
+        sessionId = session.id;
+        setActiveChatId(sessionId);
+        setChats((prev) => upsertChat(prev, session));
+      }
+
+      const result = await sendIntelliMessage(sessionId, text);
+      if (result.message) {
+        const assistantMsg = messageFromApi(result.message as ApiIntelliMessage);
+        setActiveMessages((m) => m.map((x) => (x.id === pendingMsg.id ? assistantMsg : x)));
+        if (result.session) setChats((prev) => upsertChat(prev, result.session as ApiIntelliSession));
+      } else {
+        setActiveMessages((m) =>
+          m.map((x) => (x.id === pendingMsg.id ? { ...x, pending: false, error: true, content: result.error ?? "Something went wrong." } : x)),
+        );
+      }
+    } catch (err) {
+      console.error("[UnifyIntelliWorkspace] send failed", err);
+      setActiveMessages((m) =>
+        m.map((x) => (x.id === pendingMsg.id ? { ...x, pending: false, error: true, content: "Something went wrong." } : x)),
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const filteredChats = chats.filter((c) => c.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="flex h-full">
@@ -129,8 +191,10 @@ export function UnifyIntelliWorkspace({
         onSelectPanel={setPanel}
         chats={chats}
         activeChatId={activeChatId}
-        onSelectChat={(id) => setActiveChatId(id)}
+        onSelectChat={selectChat}
         onNewChat={startNewChat}
+        onDeleteChat={deleteChat}
+        loading={loadingSessions}
         search={search}
         onSearchChange={setSearch}
       />
@@ -163,27 +227,32 @@ export function UnifyIntelliWorkspace({
                 />
               </div>
               <div className="flex-1 overflow-y-auto scroll-thin">
-                <div className="flex flex-col gap-1.5">
-                  {chats.filter((c) => c.title.toLowerCase().includes(search.toLowerCase())).map((chat) => (
-                    <button
-                      key={chat.id}
-                      onClick={() => { setActiveChatId(chat.id); setPanel("home"); }}
-                      className="flex flex-col items-start gap-0.5 rounded-lg border border-border-subtle bg-panel px-3 py-2 text-left transition-colors hover:border-accent/50 hover:bg-foreground/[0.04]"
-                    >
-                      <div className="flex w-full items-center justify-between gap-2">
-                        <span className="truncate text-[13px] font-semibold text-foreground">{chat.title}</span>
-                        <span className="shrink-0 text-[10.5px] font-medium text-muted/80">{chat.updatedAt}</span>
-                      </div>
-                      {chat.preview && <span className="w-full truncate text-[11.5px] text-muted">{chat.preview}</span>}
-                    </button>
-                  ))}
-                </div>
-                {chats.filter((c) => c.title.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+                {loadingSessions ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {filteredChats.map((chat) => (
+                      <button
+                        key={chat.id}
+                        onClick={() => selectChat(chat.id)}
+                        className="flex flex-col items-start gap-0.5 rounded-lg border border-border-subtle bg-panel px-3 py-2 text-left transition-colors hover:border-accent/50 hover:bg-foreground/[0.04]"
+                      >
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <span className="truncate text-[13px] font-semibold text-foreground">{chat.title}</span>
+                        </div>
+                        {chat.preview && <span className="w-full truncate text-[11.5px] text-muted">{chat.preview}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!loadingSessions && filteredChats.length === 0 && (
                   <div className="mt-12 text-center text-[13px] text-muted">No chats match your search.</div>
                 )}
               </div>
             </motion.div>
-          ) : !activeChat ? (
+          ) : !activeChat && activeMessages.length === 0 ? (
             <motion.div
               key="hero"
               initial={{ opacity: 0 }}
@@ -202,15 +271,17 @@ export function UnifyIntelliWorkspace({
                 </p>
               </div>
 
-              <Composer value={input} onChange={setInput} onSend={send} />
+              <IntelliMessageInput
+                value={input}
+                onChange={setInput}
+                onSend={() => send()}
+                sending={sending}
+                className="w-full"
+                autoFocus
+              />
 
               <div className="flex flex-wrap justify-center gap-2">
-                {[
-                  "Why did the last deployment fail?",
-                  "Summarize open pull requests",
-                  "What's in my backlog?",
-                  "Explain the auth flow",
-                ].map((s) => (
+                {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
                     onClick={() => setInput(s)}
@@ -230,142 +301,31 @@ export function UnifyIntelliWorkspace({
               transition={{ duration: 0.18 }}
               className="flex h-full flex-col"
             >
-              <div className="flex-1 space-y-3 overflow-y-auto scroll-thin p-4 sm:p-6">
-                {activeChat.messages.length === 0 ? (
+              <div className="flex-1 overflow-y-auto scroll-thin p-4 sm:p-6">
+                {loadingActive ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted" />
+                  </div>
+                ) : activeMessages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-[13px] text-muted">
                     Send a message to start this conversation.
                   </div>
                 ) : (
-                  activeChat.messages.map((m) => (
-                    <div key={m.id} className={cn("flex w-full", m.role === "user" ? "justify-end" : "justify-start")}>
-                      {m.role === "assistant" ? (
-                        <div className="flex flex-col items-start gap-1 w-full sm:max-w-[85%]">
-                          <div className="flex items-center gap-1.5 mb-0.5 ml-1">
-                            <img src="/unify-intelli-icon.png" alt="Unify Intelli" className="h-6 w-6 object-contain" />
-                            <span className="text-[12px] font-semibold text-foreground">Unify Intelli</span>
-                          </div>
-                          <div className="rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed border border-border-subtle bg-panel-strong/30 text-foreground font-semibold">
-                            <span className="whitespace-pre-wrap">{m.content}</span>
-                            {m.suggestedChanges && (
-                              <div className="mt-3 rounded-lg border border-border-subtle bg-panel p-3 shadow-sm font-normal">
-                                <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-foreground">
-                                  <Sparkles className="h-3.5 w-3.5 text-accent" /> Suggested Changes
-                                </div>
-                                <div className="space-y-1 text-[11.5px] text-muted">
-                                  <div><span className="font-medium text-foreground">Assignee:</span> {m.suggestedChanges.assignee}</div>
-                                  <div><span className="font-medium text-foreground">Due Date:</span> {m.suggestedChanges.dueDate}</div>
-                                </div>
-                                {onReviewChanges && (
-                                  <button
-                                    onClick={() => onReviewChanges(m.suggestedChanges!)}
-                                    className="mt-3 w-full rounded-md bg-accent py-1.5 text-[11.5px] font-semibold text-white hover:bg-accent-soft"
-                                  >
-                                    Review & Apply
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center justify-start gap-3 w-full mt-0.5 px-2 text-[11px] text-muted">
-                            <div className="flex items-center gap-2.5">
-                              <button title="Copy" className="flex items-center hover:text-foreground transition-colors"><Copy className="h-3.5 w-3.5" /></button>
-                              <button title="Share" className="flex items-center hover:text-foreground transition-colors"><Share className="h-3.5 w-3.5" /></button>
-                            </div>
-                            <span>{m.timestamp || "Just now"}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="group flex flex-col items-end w-full ml-auto sm:max-w-[85%]">
-                          <div className="flex items-end gap-2.5">
-                            <div className="flex flex-col items-end gap-1">
-                              <div className="rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed bg-accent text-white font-semibold">
-                                <span className="whitespace-pre-wrap">{m.content}</span>
-                              </div>
-                              <div className="flex items-center justify-end gap-3 w-full mt-0.5 px-1 text-[11px] text-muted opacity-0 transition-opacity group-hover:opacity-100">
-                                <span>{m.timestamp || "Just now"}</span>
-                                <div className="flex items-center gap-2.5">
-                                  <button title="Edit" onClick={() => editMessage(m.id)} className="flex items-center hover:text-foreground transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-                                  <button title="Copy" className="flex items-center hover:text-foreground transition-colors"><Copy className="h-3.5 w-3.5" /></button>
-                                  <button title="Share" className="flex items-center hover:text-foreground transition-colors"><Share className="h-3.5 w-3.5" /></button>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="shrink-0 mb-6 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-[9px] font-bold text-white shadow-sm ring-[1.5px] ring-background">
-                              VN
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))
+                  <IntelliMessageThread messages={activeMessages} compact={false} className="mx-auto w-full max-w-3xl" />
                 )}
               </div>
               <div className="border-t border-border-subtle p-3 sm:p-4">
-                <Composer value={input} onChange={setInput} onSend={send} />
+                <IntelliMessageInput
+                  value={input}
+                  onChange={setInput}
+                  onSend={() => send()}
+                  sending={sending}
+                  className="mx-auto w-full max-w-3xl"
+                />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-function Composer({
-  value,
-  onChange,
-  onSend,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onSend: () => void;
-}) {
-  return (
-    <div className="relative w-full rounded-[14px] border border-border-subtle bg-white shadow-sm">
-      <BorderBeam
-        duration={6}
-        size={250}
-        colorFrom="#00f2fe"
-        colorTo="transparent"
-        className="-inset-[1px]"
-      />
-      <BorderBeam
-        duration={6}
-        delay={3}
-        size={250}
-        colorFrom="#10b981"
-        colorTo="transparent"
-        className="-inset-[1px]"
-      />
-      <div className="relative z-10 flex items-end gap-1.5 p-1.5">
-        <button
-          type="button"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-black/5 hover:text-black"
-          aria-label="Attach a file"
-        >
-          <Paperclip className="h-4 w-4" />
-        </button>
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          rows={1}
-          placeholder="Let's collaborate"
-          className="max-h-32 flex-1 resize-none bg-transparent px-1 py-2 text-[13.5px] font-semibold text-black placeholder:text-gray-400 focus:outline-none"
-        />
-        <button
-          onClick={onSend}
-          disabled={!value.trim()}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40"
-          aria-label="Send"
-        >
-          <SendHorizontal className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );

@@ -191,6 +191,75 @@ export const spaceMembers = pgTable("space_members", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Teams ────────────────────────────────────────────────────────────────────
+// A team is a genuine grouping of people distinct from a workspace — a team can
+// span multiple spaces (via team_spaces) and has its own membership/invite flow.
+
+export const teams = pgTable("teams", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Join table linking a team to the spaces it works across.
+export const teamSpaces = pgTable("team_spaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  spaceId: uuid("space_id").notNull().references(() => spaces.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const teamMembers = pgTable("team_members", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }), // null until invite accepted
+  role: text("role").$type<"owner" | "admin" | "member">().notNull().default("member"),
+  status: text("status").$type<"active" | "pending">().notNull().default("active"),
+  invitedEmail: text("invited_email"), // set when inviting a non-existing user by email
+  invitedBy: uuid("invited_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Chat Sessions (Unify Intelli) ─────────────────────────────────────────────
+// A chat session is a single conversation thread with the AI assistant.
+// It can optionally be scoped to a work item / repository / space so the
+// assistant is fed relevant workspace context when replying.
+
+export const chatSessions = pgTable("chat_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title"), // auto-derived from the first user message if not set
+  contextType: text("context_type").$type<"workspace" | "work_item" | "repository" | "space">(),
+  contextId: uuid("context_id"), // id of the scoped work item / repo / space, if any
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: uuid("session_id").notNull().references(() => chatSessions.id, { onDelete: "cascade" }),
+  role: text("role").$type<"user" | "assistant">().notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // recipient
+  type: text("type").notNull(),                      // e.g. "team_invite" | "added_to_team"
+  title: text("title").notNull(),
+  body: text("body"),
+  entityType: text("entity_type"),                   // e.g. "team"
+  entityId: uuid("entity_id"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -211,3 +280,15 @@ export type NewDeployment = typeof deployments.$inferInsert;
 export type Incident = typeof incidents.$inferSelect;
 export type NewIncident = typeof incidents.$inferInsert;
 export type SpaceMember = typeof spaceMembers.$inferSelect;
+export type Team = typeof teams.$inferSelect;
+export type NewTeam = typeof teams.$inferInsert;
+export type TeamSpace = typeof teamSpaces.$inferSelect;
+export type NewTeamSpace = typeof teamSpaces.$inferInsert;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type NewTeamMember = typeof teamMembers.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type NewChatSession = typeof chatSessions.$inferInsert;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;

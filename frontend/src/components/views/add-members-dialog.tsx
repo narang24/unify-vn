@@ -31,10 +31,6 @@ const ROLE_CONFIG: Record<Role, { label: string; icon: typeof Crown; color: stri
   viewer: { label: "Viewer", icon: User, color: "text-muted" },
 };
 
-const SEED_MEMBERS: Member[] = [
-  { id: "m1", name: "You", email: "you@unify.dev", role: "admin", status: "active" },
-];
-
 interface AddMembersDialogProps {
   open: boolean;
   onClose: () => void;
@@ -43,7 +39,7 @@ interface AddMembersDialogProps {
 }
 
 export function AddMembersDialog({ open, onClose, spaceName, spaceId }: AddMembersDialogProps) {
-  const [members, setMembers] = useState<Member[]>(SEED_MEMBERS);
+  const [members, setMembers] = useState<Member[]>([]);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role | null>(null);
   const [inviting, setInviting] = useState(false);
@@ -72,21 +68,6 @@ export function AddMembersDialog({ open, onClose, spaceName, spaceId }: AddMembe
     }
     setInviting(true);
     setError("");
-    // Simulate async invite
-    setTimeout(() => {
-      setMembers((prev) => [
-        ...prev,
-        {
-          id: `m${Date.now()}`,
-          name: trimmed.split("@")[0],
-          email: trimmed,
-          role,
-          status: "pending",
-        },
-      ]);
-      setEmail("");
-      setInviting(false);
-    }, 700);
     api.inviteSpaceMember(spaceId, trimmed, role)
       .then((m) => setMembers((prev) => [...prev, { id: m.id, name: trimmed.split("@")[0], email: trimmed, role: m.role, status: m.status }]))
       .catch(() => setError("Couldn't send invite."))

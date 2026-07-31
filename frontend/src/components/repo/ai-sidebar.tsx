@@ -1,20 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Lightbulb, X, SendHorizontal, Bot, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Lightbulb, X, ExternalLink, Loader2 } from "lucide-react";
 import { ContextChip } from "@/components/repo/context-chip";
-import type { ChatMessage, ContextChip as ContextChipData } from "@/lib/repo-types";
-
-function uid() {
-    return Math.random().toString(36).slice(2, 9);
-}
+import { IntelliMessageInput } from "@/components/intelli-chat/intelli-message-input";
+import { IntelliMessageThread } from "@/components/intelli-chat/intelli-message-thread";
+import { getIntelliSession, sendIntelliMessage, type ApiIntelliMessage } from "@/lib/api";
+import { localId, messageFromApi, resumeOrCreateIntelliSession, type IntelliChatMessage } from "@/lib/intelli-types";
+import type { ContextChip as ContextChipData } from "@/lib/repo-types";
 
 export function AiSidebar({
     open,
     onClose,
     repoName,
+    repoId,
     contextChips,
     onRemoveChip,
     onOpenFullWorkspace,
@@ -22,6 +22,8 @@ export function AiSidebar({
     open: boolean;
     onClose: () => void;
     repoName: string;
+    /** Repository id — used as the session's `contextId` (contextType "repository"). */
+    repoId: string;
     /** Kept for backwards compatibility with callers still tracking select mode externally. */
     selectMode?: boolean;
     onToggleSelectMode?: () => void;
@@ -30,31 +32,65 @@ export function AiSidebar({
     /** Opens the full, dedicated Unify Intelli workspace — continuing this conversation there. */
     onOpenFullWorkspace?: () => void;
 }) {
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        {
-            id: "seed",
-            role: "assistant",
-            content: `Hi, I'm Unify Intelli 👋 I can see you're in ${repoName}. Select files, issues, or PRs (or highlight code) to add context, then ask me anything. Reasoning isn't wired up yet in this preview — this is the interface only.`,
-        },
-    ]);
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [messages, setMessages] = useState<IntelliChatMessage[]>([]);
+    const [loadingSession, setLoadingSession] = useState(false);
     const [input, setInput] = useState("");
+    const [sending, setSending] = useState(false);
+    const bottomRef = useRef<HTMLDivElement>(null);
 
-    function send() {
-        if (!input.trim()) return;
-        const userMsg: ChatMessage = {
-            id: uid(),
-            role: "user",
-            content: input.trim(),
-            contextChips: contextChips.length ? [...contextChips] : undefined,
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        setLoadingSession(true);
+        resumeOrCreateIntelliSession("repository", repoId)
+            .then((session) => getIntelliSession(session.id))
+            .then(({ session, messages: msgs }) => {
+                if (cancelled) return;
+                setSessionId(session.id);
+                setMessages(msgs.map(messageFromApi));
+            })
+            .catch((err) => console.error("[AiSidebar] failed to resume session", err))
+            .finally(() => {
+                if (!cancelled) setLoadingSession(false);
+            });
+        return () => {
+            cancelled = true;
         };
-        const reply: ChatMessage = {
-            id: uid(),
-            role: "assistant",
-            content:
-                "🔧 Unify Intelli's reasoning engine isn't connected in this preview — this response is a placeholder so the chat UI can be reviewed end-to-end.",
-        };
-        setMessages((m) => [...m, userMsg, reply]);
+    }, [open, repoId]);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    async function send() {
+        const text = input.trim();
+        if (!text || !sessionId || sending) return;
         setInput("");
+        setSending(true);
+
+        const userMsg: IntelliChatMessage = { id: localId(), role: "user", content: text, createdAt: new Date().toISOString() };
+        const pendingMsg: IntelliChatMessage = { id: localId(), role: "assistant", content: "", pending: true };
+        setMessages((m) => [...m, userMsg, pendingMsg]);
+
+        try {
+            const result = await sendIntelliMessage(sessionId, text);
+            if (result.message) {
+                const assistantMsg = messageFromApi(result.message as ApiIntelliMessage);
+                setMessages((m) => m.map((x) => (x.id === pendingMsg.id ? assistantMsg : x)));
+            } else {
+                setMessages((m) =>
+                    m.map((x) => (x.id === pendingMsg.id ? { ...x, pending: false, error: true, content: result.error ?? "Something went wrong." } : x)),
+                );
+            }
+        } catch (err) {
+            console.error("[AiSidebar] send failed", err);
+            setMessages((m) =>
+                m.map((x) => (x.id === pendingMsg.id ? { ...x, pending: false, error: true, content: "Something went wrong." } : x)),
+            );
+        } finally {
+            setSending(false);
+        }
     }
 
     return (
@@ -93,33 +129,33 @@ export function AiSidebar({
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 space-y-3 overflow-y-auto scroll-thin p-3">
-                            {messages.map((m) => (
-                                <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                                    <div
-                                        className={cn(
-                                            "max-w-[85%] rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed",
-                                            m.role === "user"
-                                                ? "bg-accent text-white"
-                                                : "border border-border-subtle bg-panel-strong/30 text-foreground",
-                                        )}
-                                    >
-                                        {m.role === "assistant" && (
-                                            <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-accent">
-                                                <Bot className="h-3 w-3" /> Unify Intelli
-                                            </div>
-                                        )}
-                                        {m.contextChips && m.contextChips.length > 0 && (
-                                            <div className="mb-1.5 flex flex-wrap gap-1">
-                                                {m.contextChips.map((c) => (
-                                                    <ContextChip key={c.id} chip={c} />
-                                                ))}
-                                            </div>
-                                        )}
-                                        {m.content}
-                                    </div>
+                        <div className="flex-1 overflow-y-auto scroll-thin p-3">
+                            {loadingSession ? (
+                                <div className="flex h-full items-center justify-center">
+                                    <Loader2 className="h-5 w-5 animate-spin text-muted" />
                                 </div>
-                            ))}
+                            ) : messages.length === 0 ? (
+                                <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 ring-1 ring-accent/20">
+                                        <Lightbulb className="h-5 w-5 text-accent" />
+                                    </div>
+                                    <p className="text-[12.5px] font-semibold text-foreground">Hi, I&apos;m Unify Intelli</p>
+                                    <p className="max-w-[240px] text-[11.5px] font-normal text-muted">
+                                        Select files, issues, or PRs to add context, then ask me anything about {repoName}.
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    {contextChips.length > 0 && (
+                                        <div className="mb-2 flex flex-wrap gap-1">
+                                            {contextChips.map((c) => (
+                                                <ContextChip key={c.id} chip={c} />
+                                            ))}
+                                        </div>
+                                    )}
+                                    <IntelliMessageThread ref={bottomRef} messages={messages} compact />
+                                </>
+                            )}
                         </div>
 
                         {/* Context chips row */}
@@ -132,28 +168,14 @@ export function AiSidebar({
                         )}
 
                         {/* Input */}
-                        <div className="flex items-end gap-1.5 border-t border-border-subtle p-2.5">
-                            <textarea
+                        <div className="border-t border-border-subtle p-2.5">
+                            <IntelliMessageInput
                                 value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                        e.preventDefault();
-                                        send();
-                                    }
-                                }}
-                                rows={1}
+                                onChange={setInput}
+                                onSend={send}
+                                sending={sending || loadingSession}
                                 placeholder="Ask about this repository…"
-                                className="max-h-24 flex-1 resize-none rounded-xl border border-border-subtle bg-panel px-3 py-2 text-[12.5px] text-foreground placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                             />
-                            <button
-                                onClick={send}
-                                disabled={!input.trim()}
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40"
-                                aria-label="Send"
-                            >
-                                <SendHorizontal className="h-4 w-4" />
-                            </button>
                         </div>
                     </div>
                 </motion.div>

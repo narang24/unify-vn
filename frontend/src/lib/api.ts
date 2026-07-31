@@ -274,3 +274,164 @@ export const toggleStar = (id: string) =>
   req<{ prefs: UserPrefs }>("/prefs/star", { method: "POST", body: JSON.stringify({ id }) }).then((r) => r.prefs);
 export const pushRecent = (type: "space" | "repo", id: string) =>
   req<{ prefs: UserPrefs }>("/prefs/recent", { method: "POST", body: JSON.stringify({ type, id }) }).then((r) => r.prefs);
+
+// ─── Teams ───────────────────────────────────────────────────────────────────
+export interface ApiTeamOwner {
+  id: string;
+  fullName: string | null;
+  email: string;
+  avatarUrl: string | null;
+}
+export interface ApiTeamAvatar {
+  userId: string | null;
+  fullName: string | null;
+  avatarUrl: string | null;
+}
+export interface ApiTeamMember {
+  id: string;
+  teamId: string;
+  userId: string | null;
+  role: "owner" | "admin" | "member";
+  status: "active" | "pending";
+  invitedEmail: string | null;
+  createdAt: string;
+  userFullName: string | null;
+  userEmail: string | null;
+  userAvatarUrl: string | null;
+}
+export interface ApiTeamRelatedSpace {
+  id: string;
+  name: string;
+  kind: BoardKind;
+}
+export interface ApiTeam {
+  id: string;
+  name: string;
+  description: string | null;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  owner: ApiTeamOwner | null;
+  memberCount: number;
+  avatars: ApiTeamAvatar[];
+  members: ApiTeamMember[];
+  relatedSpaces: ApiTeamRelatedSpace[];
+  starred: boolean;
+}
+
+export const listTeams = () => req<{ teams: ApiTeam[] }>("/teams").then((r) => r.teams);
+export const getTeam = (id: string) => req<{ team: ApiTeam }>(`/teams/${id}`).then((r) => r.team);
+export const createTeam = (body: { name: string; description?: string; spaceIds?: string[] }) =>
+  req<{ team: ApiTeam }>("/teams", { method: "POST", body: JSON.stringify(body) }).then((r) => r.team);
+export const updateTeam = (id: string, patch: { name?: string; description?: string | null; spaceIds?: string[] }) =>
+  req<{ team: ApiTeam }>(`/teams/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).then((r) => r.team);
+export const deleteTeam = (id: string) => req<{ message: string }>(`/teams/${id}`, { method: "DELETE" });
+export const duplicateTeam = (id: string) =>
+  req<{ team: ApiTeam }>(`/teams/${id}/duplicate`, { method: "POST" }).then((r) => r.team);
+export const starTeam = (id: string) =>
+  req<{ starred: boolean }>(`/teams/${id}/star`, { method: "POST" }).then((r) => r.starred);
+
+export const listTeamMembers = (teamId: string) =>
+  req<{ members: ApiTeamMember[] }>(`/teams/${teamId}/members`).then((r) => r.members);
+export const addTeamMember = (teamId: string, userId: string, role?: "admin" | "member") =>
+  req<{ member: ApiTeamMember }>(`/teams/${teamId}/members`, { method: "POST", body: JSON.stringify({ userId, role }) }).then((r) => r.member);
+export const inviteTeamMemberByEmail = (teamId: string, email: string, role?: "admin" | "member") =>
+  req<{ member: ApiTeamMember }>(`/teams/${teamId}/members`, { method: "POST", body: JSON.stringify({ email, role }) }).then((r) => r.member);
+export const removeTeamMember = (teamId: string, memberId: string) =>
+  req<{ message: string }>(`/teams/${teamId}/members/${memberId}`, { method: "DELETE" });
+
+// ─── Users (search for add-member pickers) ──────────────────────────────────
+export interface ApiUserSearchResult {
+  id: string;
+  fullName: string | null;
+  email: string;
+  avatarUrl: string | null;
+  githubLogin: string | null;
+}
+export const searchUsers = (q: string) =>
+  req<{ users: ApiUserSearchResult[] }>(`/users/search?q=${encodeURIComponent(q)}`).then((r) => r.users);
+
+// ─── Unify Intelli (AI chat) ──────────────────────────────────────────────────
+export type IntelliContextType = "workspace" | "work_item" | "repository" | "space";
+
+export interface ApiIntelliMessage {
+  id: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export interface ApiIntelliSession {
+  id: string;
+  userId: string;
+  title: string | null;
+  contextType: IntelliContextType | null;
+  contextId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Only present on the list endpoint. */
+  lastMessage?: ApiIntelliMessage | null;
+}
+
+export interface SendIntelliMessageResult {
+  /** Present on success (201). */
+  message?: ApiIntelliMessage;
+  session?: ApiIntelliSession;
+  /** Present when the AI call failed (502) — the user's message was still persisted. */
+  error?: string;
+  userMessage?: ApiIntelliMessage;
+}
+
+export const listIntelliSessions = () =>
+  req<{ sessions: ApiIntelliSession[] }>("/intelli/sessions").then((r) => r.sessions);
+
+export const getIntelliSession = (id: string) =>
+  req<{ session: ApiIntelliSession; messages: ApiIntelliMessage[] }>(`/intelli/sessions/${id}`);
+
+export const createIntelliSession = (body?: { contextType?: IntelliContextType; contextId?: string }) =>
+  req<{ session: ApiIntelliSession }>("/intelli/sessions", {
+    method: "POST",
+    body: JSON.stringify(body ?? {}),
+  }).then((r) => r.session);
+
+export const deleteIntelliSession = (id: string) =>
+  req<{ message: string }>(`/intelli/sessions/${id}`, { method: "DELETE" });
+
+/**
+ * Send a message in a session. Unlike `req`, this does NOT throw on a 502 —
+ * the backend still returns the persisted `userMessage` in that case so the
+ * caller can keep it in the UI and surface an inline error instead of losing
+ * what the user typed.
+ */
+export async function sendIntelliMessage(sessionId: string, message: string): Promise<SendIntelliMessageResult> {
+  const res = await fetchWithAuth(`${V1}/intelli/sessions/${sessionId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  const data = (await res.json()) as SendIntelliMessageResult;
+  if (!res.ok && res.status !== 502) {
+    throw new Error(`POST /intelli/sessions/${sessionId}/messages → ${res.status}`);
+  }
+  return data;
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+export interface ApiNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  read: boolean;
+  createdAt: string;
+}
+export const listNotifications = () =>
+  req<{ notifications: ApiNotification[]; unreadCount: number }>("/notifications");
+export const markNotificationRead = (id: string) =>
+  req<{ notification: ApiNotification }>(`/notifications/${id}/read`, { method: "PATCH" }).then((r) => r.notification);
+export const markAllNotificationsRead = () =>
+  req<{ message: string }>("/notifications/read-all", { method: "PATCH" });

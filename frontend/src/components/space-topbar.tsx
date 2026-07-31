@@ -389,6 +389,7 @@ export function SpaceTopbar({
         open={intelliOpen}
         onClose={() => setIntelliOpen(false)}
         spaceName={spaceName}
+        spaceId={spaceId}
         items={items}
         preloadedContext={intelliContext}
       />

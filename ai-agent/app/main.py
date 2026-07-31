@@ -9,6 +9,7 @@ Unify Intelli — AI Incident Agent API.
   POST /pull-request/draft  generate a repo-compliant PR draft from an RCA
   POST /index               build repository memory (RAG) from a local path
   POST /index-repo          clone owner/repo and build repository memory
+  POST /chat                workspace-aware conversational assistant (Gemini)
 
 Run:  uvicorn app.main:app --host 0.0.0.0 --port 8088   (from the ai-agent dir)
 """
@@ -16,6 +17,7 @@ Run:  uvicorn app.main:app --host 0.0.0.0 --port 8088   (from the ai-agent dir)
 from __future__ import annotations
 
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, HTTPException
@@ -27,6 +29,8 @@ from ml.predict import classify_safe
 from agent.orchestrator import analyze_incident
 from providers.github import list_deployments
 from memory.redis_memory import memory
+
+logger = logging.getLogger("unify.chat")
 
 # Shared thread-pool so async endpoints can offload blocking work.
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="unify-api")
@@ -64,6 +68,17 @@ class PrDraftRequest(BaseModel):
     repo: str
     branch: str | None = None
     rca: dict  # the full RCA payload from /analyze or /investigate
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    context: dict | None = None
+    history: list[ChatMessage] | None = None
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -249,3 +264,68 @@ async def index_repo(req: IndexRepoRequest):
     )
     result = await loop.run_in_executor(_pool, build_repository_memory, local["local_path"])
     return {**result, "local_path": local["local_path"]}
+
+
+@app.post("/chat")
+async def chat(req: ChatRequest):
+    """
+    Workspace-aware conversational assistant.
+
+    Builds a system prompt from the caller-supplied `context` (workspace /
+    space / work-item / repository / team info — already loaded by the
+    Node workspace service) plus the running `history`, then answers
+    `message` with Gemini. Returns { reply }.
+    """
+    if not GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Chat is unavailable: GEMINI_API_KEY is not configured on the AI agent.",
+        )
+
+    try:
+        from google import genai
+
+        context = req.context or {}
+
+        # NOTE: repo RAG lookup intentionally skipped — rag/pipeline.py only
+        # exposes `build_repository_memory` (indexing), no query/retrieval
+        # function to ground answers against yet. Wire this in once a
+        # `query_repository_memory`-style function exists there.
+
+        system_prompt = f"""You are Unify Intelli, an AI assistant embedded in a software team's
+workspace (sprints, boards, work items, repositories, deployments, incidents, teams).
+Answer the user's question helpfully and concisely, grounding your answer in the
+workspace context below when it's relevant. If the context doesn't contain enough
+information to answer precisely, say so plainly instead of guessing.
+
+## Workspace context (JSON)
+{context}
+"""
+
+        contents: list[dict] = []
+        for turn in req.history or []:
+            role = "model" if turn.role == "assistant" else "user"
+            contents.append({"role": role, "parts": [{"text": turn.content}]})
+        contents.append({"role": "user", "parts": [{"text": req.message}]})
+
+        loop = asyncio.get_event_loop()
+
+        def _generate():
+            client = genai.Client(api_key=GEMINI_API_KEY)
+            return client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=contents,
+                config={"system_instruction": system_prompt},
+            )
+
+        response = await loop.run_in_executor(_pool, _generate)
+        reply = (response.text or "").strip()
+        if not reply:
+            reply = "I wasn't able to generate a response for that — could you rephrase?"
+        return {"reply": reply}
+
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("[chat] Gemini call failed")
+        raise HTTPException(status_code=502, detail=f"Chat model call failed: {exc}") from exc

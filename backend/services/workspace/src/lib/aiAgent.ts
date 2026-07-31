@@ -88,3 +88,52 @@ export function indexRepository(owner: string, repo: string) {
     body: JSON.stringify({ owner, repo }),
   });
 }
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatReply {
+  reply: string;
+}
+
+/**
+ * Ask the agent to answer a chat message, grounded in workspace `context`
+ * and the running `history`. Unlike the other calls above, a failed chat
+ * call is NOT swallowed to `null` — the user is actively waiting on a
+ * reply, so the caller needs a thrown error it can turn into a proper
+ * error response instead of silently doing nothing.
+ */
+export async function chatWithAgent(payload: {
+  message: string;
+  context?: unknown;
+  history?: ChatTurn[];
+}): Promise<ChatReply> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${BASE}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const body = (await res.json()) as { detail?: string };
+        detail = body?.detail ?? "";
+      } catch {
+        // ignore — body wasn't JSON
+      }
+      throw new Error(`[ai-agent] /chat -> ${res.status}${detail ? `: ${detail}` : ""}`);
+    }
+    return (await res.json()) as ChatReply;
+  } catch (err) {
+    console.error("[ai-agent] /chat failed:", (err as Error).message);
+    throw err instanceof Error ? err : new Error(String(err));
+  } finally {
+    clearTimeout(timer);
+  }
+}

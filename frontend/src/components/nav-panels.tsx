@@ -1,14 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Clock, Star, Users, Kanban, GitBranch, Layers3, ChevronRight, Search, Plus } from "lucide-react";
+import { Clock, Star, Kanban, ChevronRight } from "lucide-react";
 import { BoardCapsule } from "@/components/ui/board-capsule";
 import { Avatar } from "@/components/ui/avatar";
 import { usePrefs } from "@/lib/prefs-context";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import type { ShellWorkspace } from "@/components/app-shell";
 import type { ConnectedRepository } from "@/lib/repo-types";
 
@@ -129,146 +125,5 @@ export function StarredPanel({ workspaces, repositories, onSelectSpace, onSelect
         </div>
       )}
     </PanelShell>
-  );
-}
-
-export function TeamsPanel({ workspaces, onSelectSpace, currentUser }: PanelProps & { currentUser: string }) {
-  const [modalOpen, setModalOpen] = React.useState(false);
-  
-  return (
-    <>
-      <PanelShell 
-        icon={Users} 
-        title="Teams" 
-        subtitle="Your workspaces and their spaces"
-        rightAction={
-          <Button variant="outline" size="sm" className="h-7 px-2.5 text-[11px] gap-1.5 rounded-lg border-border-subtle shadow-sm" onClick={() => setModalOpen(true)}>
-            <Plus className="h-3 w-3" /> Create Team
-          </Button>
-        }
-      >
-        {workspaces.length === 0 ? (
-          <EmptyState text="No teams yet — create a workspace to get started." />
-        ) : (
-          <div className="space-y-3">
-            {workspaces.map((ws) => (
-              <div key={ws.id} className="rounded-xl border border-border-subtle bg-panel p-3.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10"><Layers3 className="h-4 w-4 text-accent" /></span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-semibold text-foreground">{ws.name}</p>
-                    <p className="text-[11.5px] text-muted">{ws.spaces.length} space{ws.spaces.length !== 1 ? "s" : ""}</p>
-                  </div>
-                  <div className="flex items-center"><Avatar name={currentUser} size={24} /></div>
-                </div>
-                {ws.spaces.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {ws.spaces.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => onSelectSpace(s.id)}
-                        className="rounded-md border border-border-subtle bg-background px-2.5 py-1 text-[11.5px] font-medium text-foreground transition-colors hover:bg-foreground/[0.04]"
-                      >
-                        {s.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </PanelShell>
-      <CreateTeamModal open={modalOpen} onOpenChange={setModalOpen} />
-    </>
-  );
-}
-
-function CreateTeamModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [tab, setTab] = React.useState("add");
-  const [search, setSearch] = React.useState("");
-  
-  // Dummy data
-  const existingMembers = [
-    { name: "Alice Smith", email: "alice@example.com" },
-    { name: "Bob Jones", email: "bob@example.com" },
-    { name: "Charlie Brown", email: "charlie@example.com" },
-  ];
-  
-  const pastInvites = [
-    { email: "dave@example.com", status: "Pending" },
-    { email: "eve@example.com", status: "Accepted" },
-  ];
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[420px] p-6 rounded-[24px]">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">Create Team</DialogTitle>
-        </DialogHeader>
-
-        {/* Compact Search Bar */}
-        <div className="relative mb-5">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
-          <Input 
-            placeholder="Search people or emails..." 
-            className="pl-9 h-9 text-[13px] bg-background border-border-subtle rounded-xl shadow-sm focus-visible:ring-accent/20"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="w-full flex h-10 p-1 bg-background border border-border-subtle rounded-xl mb-5">
-            <TabsTrigger value="add" className="flex-1 text-[12px] font-semibold rounded-lg h-8 data-[state=active]:bg-panel data-[state=active]:shadow-sm data-[state=active]:border-transparent border border-transparent">
-              Add Member
-            </TabsTrigger>
-            <TabsTrigger value="invite" className="flex-1 text-[12px] font-semibold rounded-lg h-8 data-[state=active]:bg-panel data-[state=active]:shadow-sm data-[state=active]:border-transparent border border-transparent">
-              Invite Member
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="add" className="space-y-2 mt-0 h-[220px] overflow-y-auto pr-1 scroll-thin">
-            {existingMembers.map((m) => (
-              <div key={m.email} className="flex items-center justify-between p-2.5 rounded-xl border border-transparent hover:border-border-subtle hover:bg-background transition-colors">
-                <div className="flex items-center gap-3">
-                  <Avatar name={m.name} size={34} />
-                  <div>
-                    <p className="text-[13.5px] font-semibold text-foreground leading-tight">{m.name}</p>
-                    <p className="text-[11.5px] text-muted">{m.email}</p>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" className="h-7 text-[11px] rounded-lg px-3.5 font-bold border-border-subtle hover:bg-accent hover:text-white hover:border-accent transition-colors shadow-sm">
-                  Add
-                </Button>
-              </div>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="invite" className="flex flex-col mt-0 h-[220px] overflow-y-auto pr-1 scroll-thin">
-            <div className="flex gap-2 mb-6">
-              <Input placeholder="name@example.com" className="h-9 text-[13px] bg-background border-border-subtle rounded-xl shadow-sm flex-1" />
-              <Button size="sm" className="h-9 text-[12px] font-bold bg-accent hover:bg-accent-strong text-white px-5 rounded-xl shadow-sm">
-                Invite
-              </Button>
-            </div>
-            
-            <div className="flex flex-col flex-1">
-              <p className="text-[10.5px] font-bold tracking-widest uppercase text-muted mb-3 px-1">Past Invites</p>
-              <div className="space-y-2">
-                {pastInvites.map((inv) => (
-                  <div key={inv.email} className="flex items-center justify-between py-2 px-3 rounded-xl bg-background border border-border-subtle shadow-sm">
-                    <span className="text-[12.5px] text-foreground font-medium">{inv.email}</span>
-                    <span className={`text-[10.5px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-md ${inv.status === 'Pending' ? 'bg-orange-500/10 text-orange-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
-                      {inv.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
   );
 }
