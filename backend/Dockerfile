@@ -45,6 +45,7 @@ COPY --from=builder /app/package.json ./package.json
 # config + SQL migration files directly, not from the compiled dist/).
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/scripts ./scripts
 
 # # Default service if none is specified at `docker run` / k8s env.
 # ENV SERVICE=gateway
