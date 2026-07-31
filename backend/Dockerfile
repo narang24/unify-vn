@@ -41,6 +41,10 @@ RUN addgroup -g 1001 -S nodejs && adduser -S backend -u 1001
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
+# Needed at runtime for `npm run db:migrate:prod` (drizzle-kit reads the
+# config + SQL migration files directly, not from the compiled dist/).
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/drizzle ./drizzle
 
 # # Default service if none is specified at `docker run` / k8s env.
 # ENV SERVICE=gateway
@@ -61,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 #     gateway|*) exec node dist/src/index.js ;; \
 #   esac"]
 
-CMD ["npm", "run", "start:full"]
+CMD ["sh", "-c", "npm run db:migrate:prod && npm run start:full"]
