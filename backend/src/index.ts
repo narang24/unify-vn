@@ -19,9 +19,11 @@ import http from "node:http";
 import httpProxy from "http-proxy";
 import { env } from "./config/env.js";
 
-const GATEWAY_PORT = env.gatewayPort;   // 8000
-const AUTH_PORT = env.port;          // 8001
-const WS_PORT = env.workspacePort; // 8002
+// In production (Render, Railway, etc.) the platform injects PORT as the
+// single publicly-reachable port.  Fall back to GATEWAY_PORT for local dev.
+const GATEWAY_PORT = Number(process.env.PORT ?? env.gatewayPort);
+const AUTH_PORT = env.port;       // AUTH_PORT env var (4001 on Render)
+const WS_PORT = env.workspacePort; // WORKSPACE_PORT env var (8002)
 
 const proxy = httpProxy.createProxyServer({
   changeOrigin: true,

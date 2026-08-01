@@ -15,8 +15,9 @@ export const env = {
   // Workspace service port (default 8002)
   workspacePort: Number(process.env.WORKSPACE_PORT ?? 8002),
 
-  // Gateway port (default 8000) — used by the Node.js dev proxy and nginx
-  gatewayPort: Number(process.env.GATEWAY_PORT ?? 8000),
+  // Gateway port — prefers the platform-injected PORT (Render, Railway, etc.)
+  // so the gateway binds to the only publicly-reachable port.
+  gatewayPort: Number(process.env.PORT ?? process.env.GATEWAY_PORT ?? 8000),
 
   backendUrl: process.env.BACKEND_URL ?? "http://localhost:8000",
 
