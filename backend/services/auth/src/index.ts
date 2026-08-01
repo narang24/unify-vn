@@ -56,7 +56,7 @@ function sendRefreshCookie(res: express.Response, rawToken: string) {
   res.cookie("refresh_token", rawToken, {
     httpOnly: true,
     secure: env.nodeEnv === "production",
-    sameSite: env.nodeEnv === "production" ? "strict" : "lax",
+    sameSite: env.nodeEnv === "production" ? "none" : "lax",
     maxAge: REFRESH_TOKEN_EXPIRY_MS,
     path: "/api/v1/auth",
   });
@@ -203,7 +203,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       secure: env.nodeEnv === "production",
-      sameSite: env.nodeEnv === "production" ? "strict" : "lax",
+      sameSite: env.nodeEnv === "production" ? "none" : "lax",
       maxAge: 10 * 60 * 1000, // 10 minutes — only for OAuth handshake
     },
   }),
