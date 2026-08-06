@@ -32,5 +32,8 @@ Thumbs.db
 # Vector DB (auto-generated, large binary files)
 ai-agent/rag/chroma_db/
 
-# Kubernetes Secrets
-k8s/secrets.yaml
+# Kubernetes Secrets (legacy AWS/k8s setup, archived under infra/legacy-aws/)
+infra/legacy-aws/k8s/secrets.yaml
+
+cmd.md
+CI-CD-GUIDE.md

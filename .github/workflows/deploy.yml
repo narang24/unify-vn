@@ -1,0 +1,35 @@
+name: Deploy
+
+# Concept: this workflow does NOT run on push directly. It runs after the CI
+# workflow finishes, and only proceeds if CI succeeded on `main`. That's what
+# "CI gates CD" means in practice — no green build, no deploy.
+#
+# This file is OPTIONAL. Vercel and Render both already auto-deploy on push
+# to main via their own GitHub integration, with zero YAML required. Add this
+# workflow only if you specifically want deploys to happen through a hook
+# that YOU control from Actions (and, usually, turn OFF each platform's native
+# auto-deploy-on-push so you don't end up deploying twice). See CI-CD-GUIDE.md
+# for the tradeoffs.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  deploy:
+    name: Trigger deploy hooks
+    runs-on: ubuntu-latest
+    # Concept: this `if` is the actual gate. github.event.workflow_run.conclusion
+    # is CI's pass/fail result; head_branch confirms it was main, not some
+    # feature branch's CI run.
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    steps:
+      - name: Trigger Render deploy (backend)
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+      - name: Trigger Vercel deploy (frontend)
+        run: |
+          curl -fsS -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}"
