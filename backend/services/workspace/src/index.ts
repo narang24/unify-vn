@@ -21,6 +21,8 @@ import { notificationsRouter } from "./routes/notifications.js";
 import { usersRouter } from "./routes/users.js";
 import { membersRouter } from "./routes/members.js";
 import { intelliRouter } from "./routes/intelli.js";
+import { friendsRouter } from "./routes/friends.js";
+import { attachRealtime } from "./ws/realtime.js";
 
 // ─── App Setup ───────────────────────────────────────────────────────────────
 
@@ -67,6 +69,7 @@ app.use(env.apiPrefix, notificationsRouter);
 app.use(env.apiPrefix, usersRouter);
 app.use(env.apiPrefix, membersRouter);
 app.use(env.apiPrefix, intelliRouter);
+app.use(env.apiPrefix, friendsRouter);
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 
@@ -81,9 +84,13 @@ async function start() {
   await pool.query("SELECT 1");
   console.log("✓ Workspace service connected to PostgreSQL");
 
-  app.listen(WORKSPACE_PORT, () => {
+  const server = app.listen(WORKSPACE_PORT, () => {
     console.log(`✓ Workspace service listening on http://localhost:${WORKSPACE_PORT}`);
   });
+
+  // Real-time Socket.IO hub (friend requests/accepts/declines etc.) shares
+  // this same HTTP server/port — see ./ws/realtime.ts.
+  await attachRealtime(server);
 }
 
 start().catch((err) => {

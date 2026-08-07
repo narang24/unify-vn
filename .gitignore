@@ -36,4 +36,5 @@ ai-agent/rag/chroma_db/
 infra/legacy-aws/k8s/secrets.yaml
 
 cmd.md
+
 CI-CD-GUIDE.md

@@ -51,7 +51,7 @@ import type { ConnectedRepository } from "@/lib/repo-types";
 import type { BoardKind } from "@/lib/work-item-types";
 import { cn } from "@/lib/utils";
 
-export type NavKey = "recent" | "teams" | "starred";
+export type NavKey = "recent" | "teams" | "starred" | "settings" | "help";
 
 export interface ShellSpace {
   id: string;
@@ -93,7 +93,7 @@ interface AppShellProps {
 }
 
 export function AppShell(props: AppShellProps) {
-  const { greetingName, onCreateItem, user, onSignOut, fullscreen } = props;
+  const { greetingName, onCreateItem, user, onSignOut, fullscreen, onSelectNav } = props;
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -202,9 +202,13 @@ export function AppShell(props: AppShellProps) {
                     <p className="truncate text-[11px] font-semibold text-muted">{user?.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onSelectNav?.("settings")}>
                     <Settings className="h-3.5 w-3.5" /> Settings
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onSelectNav?.("help")}>
+                    <HelpCircle className="h-3.5 w-3.5" /> Help
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem destructive onClick={onSignOut}>
                     <LogOut className="h-3.5 w-3.5" /> Sign out
                   </DropdownMenuItem>
@@ -386,21 +390,25 @@ function SidebarBody({
       {/* Bottom: Settings + Help */}
       <div className="mt-auto space-y-0.5 pt-3">
         <button
+          onClick={() => onSelectNav?.("settings")}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground",
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold hover:bg-foreground/[0.06]",
+            activeNav === "settings" ? "bg-accent/10 text-accent" : "text-muted hover:text-foreground",
             collapsed && "justify-center px-0",
           )}
         >
-          <Settings className="h-4 w-4" />
+          <Settings className={cn("h-4 w-4", activeNav === "settings" ? "text-accent" : undefined)} />
           {!collapsed && "Settings"}
         </button>
         <button
+          onClick={() => onSelectNav?.("help")}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-muted hover:bg-foreground/[0.06] hover:text-foreground",
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold hover:bg-foreground/[0.06]",
+            activeNav === "help" ? "bg-accent/10 text-accent" : "text-muted hover:text-foreground",
             collapsed && "justify-center px-0",
           )}
         >
-          <HelpCircle className="h-4 w-4" />
+          <HelpCircle className={cn("h-4 w-4", activeNav === "help" ? "text-accent" : undefined)} />
           {!collapsed && "Help"}
         </button>
       </div>

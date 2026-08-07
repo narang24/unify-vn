@@ -10,6 +10,8 @@ import { toast } from "@/lib/use-toast";
 import { AppShell, type ShellWorkspace, type NavKey } from "@/components/app-shell";
 import { RecentsPanel, StarredPanel } from "@/components/nav-panels";
 import { TeamsTable } from "@/components/teams/teams-table";
+import { SettingsPage } from "@/components/settings-page";
+import { HelpPage } from "@/components/help-page";
 import { usePrefs } from "@/lib/prefs-context";
 import { SpaceTopbar } from "@/components/space-topbar";
 import { RepoWorkspace } from "@/components/repo/repo-workspace";
@@ -148,7 +150,9 @@ export default function DashboardPage() {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeNav, setActiveNavState] = useState<NavKey | null>(() => {
     const tab = searchParams.get("tab");
-    return tab === "recent" || tab === "teams" || tab === "starred" ? tab : null;
+    return tab === "recent" || tab === "teams" || tab === "starred" || tab === "settings" || tab === "help"
+      ? tab
+      : null;
   });
   const setActiveNav = useCallback(
     (nav: NavKey | null) => {
@@ -958,6 +962,10 @@ export default function DashboardPage() {
           <StarredPanel workspaces={shellWorkspaces} repositories={repositories} onSelectSpace={(id) => { setActiveNav(null); setActiveRepoId(null); setActiveSpaceId(id); pushRecent("space", id); }} onSelectRepo={selectRepo} />
         ) : activeNav === "teams" ? (
           <TeamsTable currentUser={user} />
+        ) : activeNav === "settings" ? (
+          <SettingsPage user={user} />
+        ) : activeNav === "help" ? (
+          <HelpPage />
         ) : intelliOpen ? (
           <UnifyIntelliWorkspace
             preloadedContext={intelliContext}

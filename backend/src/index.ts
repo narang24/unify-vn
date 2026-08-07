@@ -34,11 +34,31 @@ const proxy = httpProxy.createProxyServer({
 
 proxy.on("error", (err, _req, res) => {
   console.error("[gateway proxy error]", err.message);
-  const response = res as http.ServerResponse;
-  if (!response.headersSent) {
-    response.writeHead(502, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({ error: "Bad gateway — upstream service unavailable" }));
+
+  // `res` is an http.ServerResponse when a regular proxy.web() request fails,
+  // but a raw net.Socket when a proxy.ws() WebSocket upgrade fails (see the
+  // `server.on("upgrade", ...)` handler below) — the SAME "error" event
+  // fires for both, with a different-shaped third argument. Treating it as
+  // always-a-response used to throw ("writeHead is not a function") on any
+  // WebSocket connect failure, which crashed the whole gateway process and
+  // took every other /api/v1 route down with it. Branch on the actual shape
+  // instead of assuming one.
+  const target = res as Partial<http.ServerResponse> & { destroyed?: boolean; destroy?: () => void };
+  if (typeof target.writeHead === "function") {
+    if (!target.headersSent) {
+      target.writeHead(502, { "Content-Type": "application/json" });
+      target.end?.(JSON.stringify({ error: "Bad gateway — upstream service unavailable" }));
+    }
+  } else if (typeof target.destroy === "function" && !target.destroyed) {
+    target.destroy();
   }
+});
+
+// Defense-in-depth for this dev proxy: it exists purely to route traffic, so
+// one bad/unexpected error should never be allowed to take the whole thing
+// down (production uses the Nginx gateway instead — see nginx/nginx.conf).
+process.on("uncaughtException", (err) => {
+  console.error("[gateway] uncaught exception (ignored, staying up):", err);
 });
 
 const server = http.createServer((req, res) => {
@@ -98,9 +118,28 @@ const server = http.createServer((req, res) => {
   res.end(JSON.stringify({ error: "Not found" }));
 });
 
+// ── WebSocket upgrade: /api/v1/socket.io → workspace service :8002 ─────────
+// The real-time friends hub (services/workspace/src/ws/realtime.ts) is a
+// Socket.IO server living on the workspace service; the gateway just tunnels
+// the upgrade through since it's the frontend's single entry point (same as
+// every other /api/v1 route). Socket.IO's HTTP polling handshake requests
+// share this same path prefix, so they already flow through the ordinary
+// proxy.web() route above — only the WebSocket transport's upgrade needs
+// this dedicated handler.
+const socketIoPath = `${env.apiPrefix}/socket.io`;
+server.on("upgrade", (req, socket, head) => {
+  const url = req.url ?? "/";
+  if (url.startsWith(socketIoPath)) {
+    proxy.ws(req, socket, head, { target: `http://localhost:${WS_PORT}` });
+  } else {
+    socket.destroy();
+  }
+});
+
 server.listen(GATEWAY_PORT, () => {
   console.log(`\n✓ Unify API Gateway listening on http://localhost:${GATEWAY_PORT}`);
-  console.log(`  /api/v1/auth/**  →  http://localhost:${AUTH_PORT}  (auth service)`);
-  console.log(`  /api/v1/**       →  http://localhost:${WS_PORT}   (workspace service)`);
+  console.log(`  /api/v1/auth/**     →  http://localhost:${AUTH_PORT}  (auth service)`);
+  console.log(`  /api/v1/**          →  http://localhost:${WS_PORT}   (workspace service)`);
+  console.log(`  /api/v1/socket.io   →  http://localhost:${WS_PORT}   (workspace service, Socket.IO)`);
   console.log(`\n  Health check: http://localhost:${GATEWAY_PORT}/health\n`);
 });

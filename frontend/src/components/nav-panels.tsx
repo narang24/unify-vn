@@ -23,7 +23,7 @@ function findSpace(workspaces: ShellWorkspace[], id: string) {
   return null;
 }
 
-function PanelShell({ icon: Icon, title, subtitle, children, rightAction }: { icon: React.ElementType; title: string; subtitle: string; children: React.ReactNode; rightAction?: React.ReactNode }) {
+export function PanelShell({ icon: Icon, title, subtitle, children, rightAction }: { icon: React.ElementType; title: string; subtitle: string; children: React.ReactNode; rightAction?: React.ReactNode }) {
   return (
     <div className="h-full overflow-y-auto scroll-thin">
       <div className="border-b border-border-subtle bg-panel px-5 py-3.5">

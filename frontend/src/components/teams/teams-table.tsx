@@ -36,6 +36,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { AddMemberPopover } from "@/components/teams/add-member-popover";
+import { FriendsSidebar } from "@/components/teams/friends-sidebar";
 import { toast } from "@/lib/use-toast";
 import { cn } from "@/lib/utils";
 import * as api from "@/lib/api";
@@ -57,6 +58,7 @@ export function TeamsTable({ currentUser }: TeamsTableProps) {
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<ApiTeam | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [friendsOpen, setFriendsOpen] = React.useState(false);
 
   const [newName, setNewName] = React.useState("");
   const [newDescription, setNewDescription] = React.useState("");
@@ -185,6 +187,13 @@ export function TeamsTable({ currentUser }: TeamsTableProps) {
             <UsersIcon className="h-4 w-4 text-accent" />
             <h1 className="text-[15px] font-semibold text-foreground">Teams</h1>
           </div>
+          <Button
+            size="sm"
+            onClick={() => setFriendsOpen(true)}
+            className="h-8 shrink-0 self-center rounded-md bg-teal-700 px-3 text-[12px] font-semibold text-white hover:bg-teal-800"
+          >
+            View Friends
+          </Button>
         </div>
         <p className="mt-0.5 text-[12px] text-muted">Manage the teams you own or belong to</p>
       </div>
@@ -459,6 +468,8 @@ export function TeamsTable({ currentUser }: TeamsTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FriendsSidebar open={friendsOpen} onClose={() => setFriendsOpen(false)} />
     </div>
   );
 }

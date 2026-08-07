@@ -43,6 +43,13 @@
       "when": 1785451598328,
       "tag": "0005_handy_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786060605480,
+      "tag": "0006_curved_skin",
+      "breakpoints": true
     }
   ]
 }

@@ -260,6 +260,30 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Friends ──────────────────────────────────────────────────────────────────
+// A friend request is a one-directional invite; once accepted it produces a
+// (bidirectional) row in `friendships` and the request row itself is deleted.
+// Declined requests are kept (not deleted) so the sender can see the status,
+// until either side dismisses them via DELETE /friends/requests/:id.
+
+export const friendRequests = pgTable("friend_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  senderId: uuid("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  receiverId: uuid("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").$type<"pending" | "declined">().notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Undirected friendship — always stored with userAId < userBId (string compare)
+// so a pair can never appear twice and lookups can query either column.
+export const friendships = pgTable("friendships", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userAId: uuid("user_a_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userBId: uuid("user_b_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -292,3 +316,7 @@ export type ChatSession = typeof chatSessions.$inferSelect;
 export type NewChatSession = typeof chatSessions.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type FriendRequest = typeof friendRequests.$inferSelect;
+export type NewFriendRequest = typeof friendRequests.$inferInsert;
+export type Friendship = typeof friendships.$inferSelect;
+export type NewFriendship = typeof friendships.$inferInsert;

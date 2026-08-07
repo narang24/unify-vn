@@ -435,3 +435,33 @@ export const markNotificationRead = (id: string) =>
   req<{ notification: ApiNotification }>(`/notifications/${id}/read`, { method: "PATCH" }).then((r) => r.notification);
 export const markAllNotificationsRead = () =>
   req<{ message: string }>("/notifications/read-all", { method: "PATCH" });
+
+// ─── Friends ─────────────────────────────────────────────────────────────────
+export interface ApiFriend {
+  friendshipId: string;
+  id: string;
+  fullName: string | null;
+  email: string;
+  avatarUrl: string | null;
+  since: string;
+}
+export interface ApiFriendRequest {
+  id: string;
+  status: "pending" | "declined";
+  createdAt: string;
+  user: { id: string; fullName: string | null; email: string; avatarUrl: string | null };
+}
+
+export const listFriends = () => req<{ friends: ApiFriend[] }>("/friends").then((r) => r.friends);
+export const listFriendRequests = () =>
+  req<{ received: ApiFriendRequest[]; sent: ApiFriendRequest[] }>("/friends/requests");
+export const sendFriendRequest = (receiverId: string) =>
+  req<{ request: ApiFriendRequest }>("/friends/requests", { method: "POST", body: JSON.stringify({ receiverId }) });
+export const acceptFriendRequest = (id: string) =>
+  req<{ friendship: { id: string } }>(`/friends/requests/${id}/accept`, { method: "POST" });
+export const declineFriendRequest = (id: string) =>
+  req<{ request: ApiFriendRequest }>(`/friends/requests/${id}/decline`, { method: "POST" });
+export const cancelFriendRequest = (id: string) =>
+  req<{ message: string }>(`/friends/requests/${id}`, { method: "DELETE" });
+export const removeFriend = (friendshipId: string) =>
+  req<{ message: string }>(`/friends/${friendshipId}`, { method: "DELETE" });
