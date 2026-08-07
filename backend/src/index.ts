@@ -33,7 +33,8 @@ const proxy = httpProxy.createProxyServer({
 });
 
 proxy.on("error", (err, _req, res) => {
-  console.error("[gateway proxy error]", err.message);
+  const errCode = (err as NodeJS.ErrnoException).code ?? "";
+  console.error("[gateway proxy error]", errCode, err.message || err);
 
   // `res` is an http.ServerResponse when a regular proxy.web() request fails,
   // but a raw net.Socket when a proxy.ws() WebSocket upgrade fails (see the
