@@ -178,16 +178,29 @@ app.set("trust proxy", true);
 //     credentials: true,
 //   }),
 // );
+// Build the allowed-origins set once at startup.
+// FRONTEND_URL may be a comma-separated list for multi-origin setups.
+const allowedOrigins = new Set<string>(
+  env.frontendUrl
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean),
+);
+// Also allow the backend URL itself (needed during OAuth redirect loops)
+if (env.backendUrl) allowedOrigins.add(env.backendUrl.trim());
+
 app.use((req, res, next) => {
   if (req.path.startsWith(`${env.apiPrefix}/auth/oauth`)) {
     return next(); // skip CORS entirely for OAuth redirect/callback routes
   }
   cors({
     origin: (origin, callback) => {
-      if (env.nodeEnv === "development") {
-        if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+      // No origin = server-to-server (gateway proxy) — always allow
+      if (!origin) return callback(null, true);
+      if (env.nodeEnv === "development" && /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+        return callback(null, true);
       }
-      if (origin === env.frontendUrl) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
       callback(new Error("Not allowed by CORS"));
     },
     credentials: true,

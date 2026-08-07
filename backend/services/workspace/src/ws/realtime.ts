@@ -60,10 +60,16 @@ export async function attachRealtime(server: http.Server): Promise<void> {
     path: SOCKET_PATH,
     cors: {
       origin: (origin, callback) => {
-        if (env.nodeEnv === "development") {
-          if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+        // No origin = server-to-server or native WebSocket upgrade — allow
+        if (!origin) return callback(null, true);
+        if (env.nodeEnv === "development" && /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+          return callback(null, true);
         }
-        if (!origin || origin === env.frontendUrl) return callback(null, true);
+        // Re-use the same allowed-origins set built from FRONTEND_URL
+        const allowed = new Set(
+          env.frontendUrl.split(",").map((u) => u.trim()).filter(Boolean),
+        );
+        if (allowed.has(origin)) return callback(null, true);
         callback(new Error("Not allowed by CORS"));
       },
       credentials: true,

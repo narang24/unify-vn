@@ -62,13 +62,21 @@ process.on("uncaughtException", (err) => {
   console.error("[gateway] uncaught exception (ignored, staying up):", err);
 });
 
+// Build the allowed-origins set once at startup.
+const gatewayAllowedOrigins = new Set<string>(
+  env.frontendUrl
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean),
+);
+
 const server = http.createServer((req, res) => {
   const url = req.url ?? "/";
 
   // ── CORS pre-flight ──────────────────────────────────────────────────────
   const origin = req.headers.origin ?? "";
   const isAllowedOrigin =
-    origin === env.frontendUrl ||
+    gatewayAllowedOrigins.has(origin) ||
     (env.nodeEnv === "development" && /^http:\/\/localhost(:\d+)?$/.test(origin));
 
   if (isAllowedOrigin) {
