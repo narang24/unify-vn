@@ -13,6 +13,7 @@ const V1 = `${API_BASE}/api/v1`;
 async function req<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetchWithAuth(`${V1}${path}`, {
     ...options,
+    cache: "no-store", // never serve a stale cached response for API calls
     headers: { "Content-Type": "application/json", ...(options.headers ?? {}) },
   });
   if (!res.ok) throw new Error(`${options.method ?? "GET"} ${path} → ${res.status}`);
