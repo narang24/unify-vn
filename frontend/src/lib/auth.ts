@@ -46,6 +46,7 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
   // Ensure credentials are included so the HttpOnly refresh token cookie is sent
   const fetchOptions: RequestInit = {
     ...options,
+    cache: "no-store", // always hit the server — never serve a stale cached auth response
     headers,
     credentials: "include",
   };
@@ -57,6 +58,7 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
     try {
       const refreshResponse = await fetch(`${API_URL}/api/v1/auth/refresh`, {
         method: "POST",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // this sends the refresh_token cookie
       });

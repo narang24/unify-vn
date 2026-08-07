@@ -497,6 +497,8 @@ app.get(`${env.apiPrefix}/auth/me`, async (req, res) => {
       return;
     }
 
+    // Never let browsers or proxies cache the auth state
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.json({
       user: {
         id: user.id,
